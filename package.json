@@ -1,0 +1,27 @@
+{
+  "name": "telemed-platform",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Web-Based Telemedicine Platform with React/Vite frontend, PHP API, and Socket.IO chat server",
+  "scripts": {
+    "setup": "npm run install:all && npm run build",
+    "install:all": "npm run install:frontend && npm run install:chat",
+    "install:frontend": "cd frontend && npm install",
+    "install:chat": "cd chat-server && npm install",
+    "dev": "npm run dev:frontend",
+    "dev:frontend": "cd frontend && npm run dev",
+    "dev:lan": "npm run dev:frontend",
+    "dev:https": "set VITE_DEV_HTTPS=1&& npm run dev:frontend",
+    "dev:https:lan": "cd frontend && set VITE_DEV_HTTPS=1&& node scripts/dev-server.mjs --host 0.0.0.0 --port 5174 --strictPort",
+    "build": "cd frontend && npm run build",
+    "preview": "cd frontend && npm run preview",
+    "preview:lan": "npm run preview",
+    "preview:https": "set VITE_DEV_HTTPS=1&& npm run preview",
+    "start": "npm run start:chat",
+    "start:chat": "cd chat-server && npm run start"
+  },
+  "engines": {
+    "node": ">=18",
+    "npm": ">=9"
+  }
+}

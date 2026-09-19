@@ -1,0 +1,11 @@
+# Front-controller: route all /api/* requests through index.php
+RewriteEngine On
+RewriteBase /telemed-platform/api/
+
+# Allow Authorization header to reach PHP (Apache strips it by default)
+RewriteRule .* - [E=HTTP_AUTHORIZATION:%{HTTP:Authorization}]
+
+# Skip rewrite for files that actually exist
+RewriteCond %{REQUEST_FILENAME} !-f
+RewriteCond %{REQUEST_FILENAME} !-d
+RewriteRule ^(.*)$ index.php [QSA,L]

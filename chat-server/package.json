@@ -1,0 +1,20 @@
+{
+  "name": "telemed-chat-server",
+  "version": "1.0.0",
+  "description": "Real-time chat server for the Web-Based Telemedicine Platform (FR-P-05, FR-D-04, NFR-Performance: <1s message latency)",
+  "main": "server.js",
+  "type": "commonjs",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "express": "^4.19.2",
+    "socket.io": "^4.7.5",
+    "mysql2": "^3.10.0",
+    "cors": "^2.8.5"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "license": "MIT"
+}
