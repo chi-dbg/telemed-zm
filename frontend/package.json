@@ -9,6 +9,7 @@
     "dev:https:lan": "set VITE_DEV_HTTPS=1&& node scripts/dev-server.mjs --host 0.0.0.0 --port 5174 --strictPort",
     "dev:vite": "vite",
     "build": "vite build",
+    "build:render": "vite build --outDir dist",
     "preview": "vite preview"
   },
   "dependencies": {

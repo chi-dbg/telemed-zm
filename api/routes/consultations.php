@@ -7,37 +7,20 @@
 require_once __DIR__ . '/../helpers.php';
 require_once __DIR__ . '/../middleware.php';
 
-function consult_ensure_communication_columns(): void
-{
-    static $checked = false;
-    if ($checked) return;
-    $checked = true;
-
-    $pdo = DB::conn();
-    $stmt = $pdo->query("SHOW COLUMNS FROM consultations LIKE 'communication_mode'");
-    if (!$stmt->fetch()) {
-        $pdo->exec(
-            "ALTER TABLE consultations
-             ADD COLUMN communication_mode ENUM('chat','video') NOT NULL DEFAULT 'chat'
-             AFTER triage_recommendation"
-        );
-    }
-}
-
 function consult_patient_profile_id(int $userId): ?int
 {
     $existing = profile_id_for_user($userId, 'patient');
     if ($existing) return $existing;
 
     $pdo = DB::conn();
-    $stmt = $pdo->prepare('SELECT user_id FROM users WHERE user_id = ? AND role = "patient" AND is_active = 1 LIMIT 1');
+    $stmt = $pdo->prepare("SELECT user_id FROM users WHERE user_id = ? AND role = 'patient' AND is_active = 1 LIMIT 1");
     $stmt->execute([$userId]);
     if (!$stmt->fetch()) return null;
 
     try {
         $stmt = $pdo->prepare('INSERT INTO patients (user_id) VALUES (?)');
         $stmt->execute([$userId]);
-        return (int) $pdo->lastInsertId();
+        return db_last_insert_id($pdo);
     } catch (Throwable $e) {
         $existing = profile_id_for_user($userId, 'patient');
         if ($existing) return $existing;
@@ -48,8 +31,6 @@ function consult_patient_profile_id(int $userId): ?int
 /* ---- Patient creates a consultation request ---- */
 function consult_create(): void
 {
-    consult_ensure_communication_columns();
-
     $auth = require_auth(['patient']);
     $data = read_json();
     require_fields($data, ['symptoms']);
@@ -65,11 +46,11 @@ function consult_create(): void
     }
 
     $stmt = DB::conn()->prepare(
-        'INSERT INTO consultations (patient_id, submitted_symptoms, triage_score, triage_recommendation, communication_mode, status)
-         VALUES (?, ?, ?, ?, ?, "queued")'
+        "INSERT INTO consultations (patient_id, submitted_symptoms, triage_score, triage_recommendation, communication_mode, status)
+         VALUES (?, ?, ?, ?, ?, 'queued')"
     );
     $stmt->execute([$patientId, $data['symptoms'], $triageScore, $triageRec, $mode]);
-    $cid = (int) DB::conn()->lastInsertId();
+    $cid = db_last_insert_id(DB::conn());
 
     audit_log((int)$auth['uid'], 'patient', 'consultation.requested', 'consultation', $cid,
               "Patient submitted symptoms (triage=$triageRec, score=$triageScore, mode=$mode)");
@@ -89,8 +70,6 @@ function consult_create(): void
 /* ---- List consultations for the current user ---- */
 function consult_list(): void
 {
-    consult_ensure_communication_columns();
-
     $auth = require_auth();
     $role = $auth['role'];
     $uid  = (int) $auth['uid'];
@@ -128,16 +107,14 @@ function consult_list(): void
 /* ---- Doctor's pending queue ---- */
 function consult_queue(): void
 {
-    consult_ensure_communication_columns();
-
     require_auth(['doctor']);
     $stmt = DB::conn()->query(
-        'SELECT c.*, pu.full_name AS patient_name
+        "SELECT c.*, pu.full_name AS patient_name
          FROM consultations c
          JOIN patients p ON p.patient_id = c.patient_id
          JOIN users pu ON pu.user_id = p.user_id
-         WHERE c.status = "queued"
-         ORDER BY c.requested_at ASC'
+         WHERE c.status = 'queued'
+         ORDER BY c.requested_at ASC"
     );
     send_json(['queue' => $stmt->fetchAll()]);
 }
@@ -145,8 +122,6 @@ function consult_queue(): void
 /* ---- Show one consultation (with patient context) ---- */
 function consult_show(string $id): void
 {
-    consult_ensure_communication_columns();
-
     $auth = require_auth();
     $cid  = (int) $id;
     $stmt = DB::conn()->prepare(
@@ -178,8 +153,6 @@ function consult_show(string $id): void
 /* ---- Doctor accepts a queued consultation (FR-D-02) ---- */
 function consult_accept(string $id): void
 {
-    consult_ensure_communication_columns();
-
     $auth = require_auth(['doctor']);
     $cid  = (int) $id;
     $did  = profile_id_for_user((int)$auth['uid'], 'doctor');
@@ -197,8 +170,8 @@ function consult_accept(string $id): void
         }
 
         $upd = $pdo->prepare(
-            'UPDATE consultations SET doctor_id = ?, status = "in_progress", started_at = NOW()
-             WHERE consultation_id = ?'
+            "UPDATE consultations SET doctor_id = ?, status = 'in_progress', started_at = NOW()
+             WHERE consultation_id = ?"
         );
         $upd->execute([$did, $cid]);
         $pdo->commit();
@@ -314,5 +287,5 @@ function consult_send_message(string $id): void
          VALUES (?, ?, ?, ?)'
     );
     $stmt->execute([$cid, (int)$auth['uid'], $auth['role'], $data['message']]);
-    send_json(['message' => 'sent', 'id' => (int) DB::conn()->lastInsertId()], 201);
+    send_json(['message' => 'sent', 'id' => db_last_insert_id(DB::conn())], 201);
 }

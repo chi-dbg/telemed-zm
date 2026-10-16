@@ -14,8 +14,8 @@ This system satisfies all three research objectives, answers all three research 
 - **Socket.IO client** for realtime patient↔doctor chat
 - **Sidebar navigation + content layout** with green primary palette and white surfaces
 - **22 React pages** covering the entire care pathway, plus 9 reusable components
-- **PHP 8 REST API** backend (unchanged from previous version) with 40+ endpoints
-- **15 MySQL tables** (9 from proposal + 6 extensions)
+- **PHP 8 REST API** backend connected to Supabase PostgreSQL, with 40+ endpoints
+- **15 PostgreSQL tables** hosted on Supabase (9 from proposal + 6 extensions)
 - **Realtime chat** via Socket.IO Node.js server
 
 ---
@@ -27,7 +27,7 @@ This system satisfies all three research objectives, answers all three research 
 | Presentation     | **React 18 + framer-motion + Vite**                  | `frontend/` (source) → builds to `public/` |
 | Application API  | **PHP 8** REST API (front controller + routes)       | `api/`              |
 | Real-time chat   | **Node.js 18+** with Socket.IO                       | `chat-server/`      |
-| Data             | **MySQL 5.7+/8.0** (XAMPP)                           | `database/`         |
+| Data             | **PostgreSQL** (Supabase)                             | `supabase/`         |
 
 ```
 xampp/htdocs/telemed-platform/
@@ -49,18 +49,66 @@ xampp/htdocs/telemed-platform/
 │       ├── pages/               ← 22 page components
 │       └── styles/global.css    ← green-on-white sidebar shell
 ├── public/               ← Built React app (Vite output) — what XAMPP serves
-├── api/                  ← PHP REST API (unchanged)
-├── chat-server/          ← Node.js Socket.IO server (unchanged)
-├── database/             ← schema.sql + seed.sql (unchanged)
+├── api/                  ← PHP REST API (PostgreSQL)
+├── chat-server/          ← Node.js Socket.IO server (PostgreSQL)
+├── supabase/             ← PostgreSQL migration, seed data, and Supabase config
 ├── README.md
 └── TRACEABILITY_MATRIX.md
 ```
 
 ---
 
+## Deploying to Render with Supabase
+
+This deployment runs the PHP API and Socket.IO server as separate Render web
+services, hosts the Vite build as a Render static site, and stores application
+data in Supabase PostgreSQL.
+
+1. Create a Supabase project. Apply
+   `supabase/migrations/20261015000100_initial_schema.sql` using the Supabase
+   SQL Editor (or `supabase db push`). Optionally run `supabase/seed.sql` for
+   demo accounts; these demo credentials are not suitable for production.
+2. In Supabase, copy the PostgreSQL **session pooler** host, port, username,
+   database name, and database password. Use its session mode so the API and
+   chat service can use PostgreSQL identity sequences reliably.
+3. In Render, create a Blueprint from this repository and use `render.yaml`.
+   Supply the database host, user, and password when prompted. Set
+   `CORS_ALLOWED_ORIGINS` on both API and chat services to the exact HTTPS URL
+   of the deployed frontend if you change its Render service name.
+4. The frontend build gets `VITE_API_BASE_URL` and `VITE_CHAT_SERVER_URL` from
+   the Blueprint. Once the services are deployed, open the static site URL.
+
+### Environment variables
+
+| Variable | Required | Used by | Description |
+|---|---|---|---|
+| `APP_ENV` | Yes in production | API, chat | Use `production`; enables secure cross-site auth cookies and production secret checks. |
+| `DB_HOST` | Yes | API, chat | Supabase PostgreSQL session-pooler hostname. |
+| `DB_PORT` | Yes | API, chat | PostgreSQL port (usually `5432` for the session pooler). |
+| `DB_NAME` | Yes | API, chat | Supabase database name (usually `postgres`). |
+| `DB_USER` | Yes | API, chat | Supabase database/session-pooler username. |
+| `DB_PASSWORD` | Yes | API, chat | Supabase **database** password; not an anon or service-role API key. |
+| `DB_SSLMODE` | Yes in production | API, chat | Set to `require` for Supabase TLS. |
+| `JWT_SECRET` | Yes | API, chat | Identical long, random secret on both services; Render generates one and shares it. |
+| `CORS_ALLOWED_ORIGINS` | Yes in production | API, chat | Comma-separated exact frontend origins, e.g. `https://telemed-frontend.onrender.com`. |
+| `VITE_API_BASE_URL` | Yes for Render build | Frontend | Public URL of the PHP API service, with no trailing slash. |
+| `VITE_CHAT_SERVER_URL` | Yes for Render build | Frontend | Public HTTPS URL of the Socket.IO service. |
+| `PORT` | Render-managed | API, chat | Render's HTTP port (10000 by default); the API image listens on 10000 and the chat server uses the injected port. |
+| `CHAT_HOST` | No | Chat | Bind host; defaults to `0.0.0.0`. |
+| `CHAT_PORT` | No | Chat/local development | Local chat-server port; Render uses its injected `PORT`. |
+| `VITE_HOST` | No | Frontend/local development | Local Vite bind host. |
+| `VITE_PORT` | No | Frontend/local development | Local Vite port. |
+| `VITE_STRICT_PORT` | No | Frontend/local development | Set to `1` to fail rather than choose another Vite port. |
+| `VITE_DEV_HTTPS` | No | Frontend/local development | Set to `1` to enable the existing local HTTPS setup when certificates are present. |
+| `VITE_AUTO_CHAT_SERVER` | No | Frontend/local development | Set to `0` to disable automatic local chat-server startup. |
+
+See `.env.example` for local variable names and example values. Never commit
+actual database passwords or JWT secrets.
+
 ## Prerequisites
 
-- **XAMPP 8.x** (Apache + MySQL + PHP 8) — [download](https://www.apachefriends.org/)
+- **PHP 8.3+ with `pdo_pgsql`** (or Docker for the API)
+- A **Supabase PostgreSQL** project
 - **Node.js 18+** for both the chat server and the frontend build — [download](https://nodejs.org)
 - A modern browser: Chrome / Edge / Brave / Firefox
 
@@ -68,19 +116,24 @@ xampp/htdocs/telemed-platform/
 
 ## Setup
 
-### 1. Place the project in `htdocs`
+### 1. Configure the database
+
+Create a Supabase project and apply
+`supabase/migrations/20261015000100_initial_schema.sql` in its SQL Editor.
+Optionally run `supabase/seed.sql` to add demo accounts and sample records.
+The older `database/schema.sql` and `database/seed.sql` are retained for
+reference only; do not use them with the PostgreSQL backend.
+
+### 2. Configure backend environment
+
+Set the API and chat server variables from the deployment section above,
+including the same `JWT_SECRET` and Supabase database credentials on both.
+For XAMPP local testing, enable `pdo_pgsql` and pass these environment variables
+to Apache and Node.js.
+
+### 3. Place the project in `htdocs` (optional local Apache setup)
 
 Copy this `telemed-platform` folder into your XAMPP `htdocs` directory.
-
-### 2. Start XAMPP
-
-Start **Apache** and **MySQL** from the XAMPP control panel.
-
-### 3. Create the database
-
-Via phpMyAdmin (`http://localhost/phpmyadmin`) → SQL tab → paste contents of `database/schema.sql`, run, then `database/seed.sql`, run.
-
-Or use the helper script: `setup.bat` (Windows) or `./setup.sh` (macOS/Linux).
 
 ### 4. Install frontend dependencies and build
 
@@ -90,9 +143,10 @@ npm install
 npm run build
 ```
 
-This builds the React app into `../public/`, which Apache serves.
+This builds the React app into `../public/`, which Apache serves. To build for
+Render's static site instead, use `npm run build:render` (outputs to `dist/`).
 
-> **For development with hot reload**, run `npm run dev` and visit `http://localhost:5173`. The Vite dev server proxies `/telemed-platform/api/*` to your local Apache backend.
+> **For development with hot reload**, run `npm run dev` and visit `http://localhost:5173`. The Vite dev server proxies `/telemed-platform/api/*` to your local Apache/PHP API.
 
 ### 5. Install and start the chat server
 
@@ -229,7 +283,7 @@ The React migration also unlocks:
 → Apache `mod_rewrite` is disabled, or the project is mounted at a different path. Edit `api/.htaccess` and update `RewriteBase`.
 
 **`Database connection failed`**
-→ MySQL isn't running. Edit `api/config.php` if your XAMPP MySQL has a non-default password.
+→ Check the Supabase PostgreSQL host, username, password, port, and SSL mode in the API environment.
 
 **Chat says "connection error"**
 → The Node.js chat server isn't running. `cd chat-server && npm start`. Messages still persist via REST fallback.

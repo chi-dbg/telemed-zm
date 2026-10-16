@@ -115,7 +115,7 @@ function rec_create(): void
         $data['title'],
         $data['content'],
     ]);
-    $rid = (int) DB::conn()->lastInsertId();
+    $rid = db_last_insert_id(DB::conn());
     audit_log((int)$auth['uid'], 'doctor', 'record.created', 'health_record', $rid, "Note: {$data['title']}");
 
     send_json(['message' => 'Record added', 'record_id' => $rid], 201);

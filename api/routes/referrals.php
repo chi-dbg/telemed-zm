@@ -27,10 +27,10 @@ function ref_create(): void
     $pdo->beginTransaction();
     try {
         $ins = $pdo->prepare(
-            'INSERT INTO referrals
+            "INSERT INTO referrals
              (consultation_id, patient_id, doctor_id, clinic_name, clinic_address, clinic_contact,
               appointment_date, appointment_time, referral_reason, status)
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, "scheduled")'
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'scheduled')"
         );
         $ins->execute([
             $c['consultation_id'],
@@ -43,9 +43,9 @@ function ref_create(): void
             $data['appointment_time'],
             $data['referral_reason'],
         ]);
-        $rid = (int) $pdo->lastInsertId();
+        $rid = db_last_insert_id($pdo);
 
-        $pdo->prepare('UPDATE consultations SET status = "referred", closed_at = NOW() WHERE consultation_id = ?')
+        $pdo->prepare("UPDATE consultations SET status = 'referred', closed_at = NOW() WHERE consultation_id = ?")
             ->execute([$c['consultation_id']]);
 
         $pdo->commit();

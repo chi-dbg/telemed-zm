@@ -16,7 +16,7 @@ function admin_count(PDO $pdo, string $sql, array $params = []): int
 
 function admin_user_select_sql(): string
 {
-    return 'SELECT
+    return "SELECT
                 u.user_id AS id,
                 u.full_name,
                 u.email,
@@ -29,14 +29,14 @@ function admin_user_select_sql(): string
                 u.status_changed_at,
                 reviewer.full_name AS status_changed_by_name,
                 CASE
-                    WHEN u.role = "doctor" THEN d.affiliated_institution
-                    WHEN u.role = "pharmacist" THEN ph.pharmacy_name
-                    WHEN u.role = "patient" THEN p.address
-                    ELSE "Telemed ZM"
+                    WHEN u.role = 'doctor' THEN d.affiliated_institution
+                    WHEN u.role = 'pharmacist' THEN ph.pharmacy_name
+                    WHEN u.role = 'patient' THEN p.address
+                    ELSE 'Telemed ZM'
                 END AS organization,
                 CASE
-                    WHEN u.role = "doctor" THEN d.license_number
-                    WHEN u.role = "pharmacist" THEN ph.pharmacy_registration_number
+                    WHEN u.role = 'doctor' THEN d.license_number
+                    WHEN u.role = 'pharmacist' THEN ph.pharmacy_registration_number
                     ELSE NULL
                 END AS credential,
                 d.specialisation,
@@ -46,7 +46,7 @@ function admin_user_select_sql(): string
             LEFT JOIN patients p ON p.user_id = u.user_id
             LEFT JOIN doctors d ON d.user_id = u.user_id
             LEFT JOIN pharmacists ph ON ph.user_id = u.user_id
-            LEFT JOIN users reviewer ON reviewer.user_id = u.status_changed_by';
+            LEFT JOIN users reviewer ON reviewer.user_id = u.status_changed_by";
 }
 
 function admin_fetch_users(PDO $pdo, array $conditions = [], array $params = [], int $limit = 300): array
@@ -55,7 +55,10 @@ function admin_fetch_users(PDO $pdo, array $conditions = [], array $params = [],
     if ($conditions) {
         $sql .= ' WHERE ' . implode(' AND ', $conditions);
     }
-    $sql .= ' ORDER BY FIELD(u.account_status, "pending", "approved", "blocked", "rejected"), u.created_at DESC LIMIT ' . max(1, min(500, $limit));
+    $sql .= " ORDER BY CASE u.account_status
+              WHEN 'pending' THEN 1 WHEN 'approved' THEN 2
+              WHEN 'blocked' THEN 3 WHEN 'rejected' THEN 4 ELSE 5 END,
+              u.created_at DESC LIMIT " . max(1, min(500, $limit));
 
     $stmt = $pdo->prepare($sql);
     $stmt->execute($params);
@@ -69,62 +72,64 @@ function admin_overview(): void
 
     $hospitalCount = admin_count(
         $pdo,
-        'SELECT COUNT(DISTINCT NULLIF(TRIM(COALESCE(d.affiliated_institution, "")), ""))
+        "SELECT COUNT(DISTINCT NULLIF(TRIM(COALESCE(d.affiliated_institution, '')), ''))
          FROM doctors d
          JOIN users u ON u.user_id = d.user_id
-         WHERE u.account_status = "approved" AND u.is_active = 1'
+         WHERE u.account_status = 'approved' AND u.is_active = 1"
     );
 
     $payload = [
         'cards' => [
             ['label' => 'Hospitals registered', 'value' => $hospitalCount, 'icon' => 'hospital', 'tone' => 'primary', 'foot' => 'approved doctor institutions'],
-            ['label' => 'Patients registered', 'value' => admin_count($pdo, 'SELECT COUNT(*) FROM users WHERE role = "patient"'), 'icon' => 'users', 'tone' => 'primary'],
-            ['label' => 'Doctors registered', 'value' => admin_count($pdo, 'SELECT COUNT(*) FROM users WHERE role = "doctor"'), 'icon' => 'shield', 'tone' => 'success'],
-            ['label' => 'Pharmacies registered', 'value' => admin_count($pdo, 'SELECT COUNT(*) FROM users WHERE role = "pharmacist"'), 'icon' => 'pill', 'tone' => 'primary'],
+            ['label' => 'Patients registered', 'value' => admin_count($pdo, "SELECT COUNT(*) FROM users WHERE role = 'patient'"), 'icon' => 'users', 'tone' => 'primary'],
+            ['label' => 'Doctors registered', 'value' => admin_count($pdo, "SELECT COUNT(*) FROM users WHERE role = 'doctor'"), 'icon' => 'shield', 'tone' => 'success'],
+            ['label' => 'Pharmacies registered', 'value' => admin_count($pdo, "SELECT COUNT(*) FROM users WHERE role = 'pharmacist'"), 'icon' => 'pill', 'tone' => 'primary'],
         ],
         'account_summary' => [
             'total_users' => admin_count($pdo, 'SELECT COUNT(*) FROM users'),
-            'active_users' => admin_count($pdo, 'SELECT COUNT(*) FROM users WHERE is_active = 1 AND account_status = "approved"'),
-            'pending_users' => admin_count($pdo, 'SELECT COUNT(*) FROM users WHERE account_status = "pending"'),
-            'blocked_users' => admin_count($pdo, 'SELECT COUNT(*) FROM users WHERE account_status = "blocked"'),
-            'rejected_users' => admin_count($pdo, 'SELECT COUNT(*) FROM users WHERE account_status = "rejected"'),
+            'active_users' => admin_count($pdo, "SELECT COUNT(*) FROM users WHERE is_active = 1 AND account_status = 'approved'"),
+            'pending_users' => admin_count($pdo, "SELECT COUNT(*) FROM users WHERE account_status = 'pending'"),
+            'blocked_users' => admin_count($pdo, "SELECT COUNT(*) FROM users WHERE account_status = 'blocked'"),
+            'rejected_users' => admin_count($pdo, "SELECT COUNT(*) FROM users WHERE account_status = 'rejected'"),
         ],
         'usage' => [
             'clinical' => [
                 ['label' => 'Total consultations', 'value' => admin_count($pdo, 'SELECT COUNT(*) FROM consultations')],
-                ['label' => 'Active consultations', 'value' => admin_count($pdo, 'SELECT COUNT(*) FROM consultations WHERE status IN ("queued", "assigned", "in_progress")')],
-                ['label' => 'Consultations today', 'value' => admin_count($pdo, 'SELECT COUNT(*) FROM consultations WHERE DATE(requested_at) = CURDATE()')],
-                ['label' => 'Upcoming referrals', 'value' => admin_count($pdo, 'SELECT COUNT(*) FROM referrals WHERE status = "scheduled" AND appointment_date >= CURDATE()')],
+                ['label' => 'Active consultations', 'value' => admin_count($pdo, "SELECT COUNT(*) FROM consultations WHERE status IN ('queued', 'assigned', 'in_progress')")],
+                ['label' => 'Consultations today', 'value' => admin_count($pdo, 'SELECT COUNT(*) FROM consultations WHERE requested_at::date = CURRENT_DATE')],
+                ['label' => 'Upcoming referrals', 'value' => admin_count($pdo, "SELECT COUNT(*) FROM referrals WHERE status = 'scheduled' AND appointment_date >= CURRENT_DATE")],
             ],
             'pharmacy' => [
                 ['label' => 'Total prescriptions', 'value' => admin_count($pdo, 'SELECT COUNT(*) FROM prescriptions')],
-                ['label' => 'Pending dispensing', 'value' => admin_count($pdo, 'SELECT COUNT(*) FROM prescriptions WHERE status = "pending"')],
-                ['label' => 'Dispensed prescriptions', 'value' => admin_count($pdo, 'SELECT COUNT(*) FROM prescriptions WHERE status = "dispensed"')],
-                ['label' => 'Pending refill reviews', 'value' => admin_count($pdo, 'SELECT COUNT(*) FROM refill_requests WHERE status = "pending"')],
+                ['label' => 'Pending dispensing', 'value' => admin_count($pdo, "SELECT COUNT(*) FROM prescriptions WHERE status = 'pending'")],
+                ['label' => 'Dispensed prescriptions', 'value' => admin_count($pdo, "SELECT COUNT(*) FROM prescriptions WHERE status = 'dispensed'")],
+                ['label' => 'Pending refill reviews', 'value' => admin_count($pdo, "SELECT COUNT(*) FROM refill_requests WHERE status = 'pending'")],
             ],
             'system' => [
                 ['label' => 'Chat messages', 'value' => admin_count($pdo, 'SELECT COUNT(*) FROM chat_messages')],
                 ['label' => 'Audit events', 'value' => admin_count($pdo, 'SELECT COUNT(*) FROM audit_log')],
-                ['label' => 'Audit events in 7 days', 'value' => admin_count($pdo, 'SELECT COUNT(*) FROM audit_log WHERE created_at >= DATE_SUB(NOW(), INTERVAL 7 DAY)')],
+                ['label' => 'Audit events in 7 days', 'value' => admin_count($pdo, "SELECT COUNT(*) FROM audit_log WHERE created_at >= NOW() - INTERVAL '7 days'")],
                 ['label' => 'Unread notifications', 'value' => admin_count($pdo, 'SELECT COUNT(*) FROM notifications WHERE is_read = 0')],
             ],
         ],
-        'pending_users' => admin_fetch_users($pdo, ['u.account_status = "pending"'], [], 8),
+        'pending_users' => admin_fetch_users($pdo, ["u.account_status = 'pending'"], [], 8),
         'recent_users' => admin_fetch_users($pdo, [], [], 8),
         'role_breakdown' => [],
         'recent_activity' => [],
     ];
 
     $stmt = $pdo->query(
-        'SELECT role,
+        "SELECT role,
                 COUNT(*) AS total,
-                SUM(is_active = 1 AND account_status = "approved") AS active,
-                SUM(account_status = "pending") AS pending,
-                SUM(account_status = "blocked") AS blocked,
-                SUM(account_status = "rejected") AS rejected
+                COUNT(*) FILTER (WHERE is_active = 1 AND account_status = 'approved') AS active,
+                COUNT(*) FILTER (WHERE account_status = 'pending') AS pending,
+                COUNT(*) FILTER (WHERE account_status = 'blocked') AS blocked,
+                COUNT(*) FILTER (WHERE account_status = 'rejected') AS rejected
          FROM users
          GROUP BY role
-         ORDER BY FIELD(role, "admin", "doctor", "pharmacist", "patient")'
+         ORDER BY CASE role
+                  WHEN 'admin' THEN 1 WHEN 'doctor' THEN 2
+                  WHEN 'pharmacist' THEN 3 WHEN 'patient' THEN 4 ELSE 5 END"
     );
     $payload['role_breakdown'] = $stmt->fetchAll();
 
@@ -145,17 +150,17 @@ function admin_hospitals(): void
 {
     require_auth(['admin']);
     $stmt = DB::conn()->query(
-        'SELECT
+        "SELECT
             TRIM(d.affiliated_institution) AS name,
             COUNT(*) AS doctor_count,
-            GROUP_CONCAT(DISTINCT NULLIF(TRIM(d.specialisation), "") ORDER BY d.specialisation SEPARATOR ", ") AS specialisations
+            STRING_AGG(DISTINCT NULLIF(TRIM(d.specialisation), ''), ', ' ORDER BY NULLIF(TRIM(d.specialisation), '')) AS specialisations
          FROM doctors d
          JOIN users u ON u.user_id = d.user_id
-         WHERE u.account_status = "approved"
+         WHERE u.account_status = 'approved'
            AND u.is_active = 1
-           AND NULLIF(TRIM(COALESCE(d.affiliated_institution, "")), "") IS NOT NULL
+           AND NULLIF(TRIM(COALESCE(d.affiliated_institution, '')), '') IS NOT NULL
          GROUP BY TRIM(d.affiliated_institution)
-         ORDER BY name ASC'
+         ORDER BY name ASC"
     );
 
     send_json(['hospitals' => $stmt->fetchAll()]);
@@ -231,7 +236,7 @@ function admin_update_user_status(string $id): void
     if ($target['role'] === 'admin' && $status !== 'approved') {
         $remainingAdmins = admin_count(
             $pdo,
-            'SELECT COUNT(*) FROM users WHERE role = "admin" AND user_id <> ? AND is_active = 1 AND account_status = "approved"',
+            "SELECT COUNT(*) FROM users WHERE role = 'admin' AND user_id <> ? AND is_active = 1 AND account_status = 'approved'",
             [$targetId]
         );
         if ($remainingAdmins < 1) {

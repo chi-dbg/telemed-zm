@@ -5,7 +5,7 @@ import { useAuth } from '../hooks/useAuth.jsx';
 import {
     BrandIcon, HomeIcon, PlusCircleIcon, MessageIcon, ClipboardIcon, PillIcon,
     RefreshIcon, ActivityIcon, HospitalIcon, BellIcon, UserIcon, BookIcon,
-    ClockIcon, UsersIcon, SearchIcon, InboxIcon, CheckCircleIcon, LogoutIcon, ShieldIcon,
+    ClockIcon, UsersIcon, SearchIcon, InboxIcon, CheckCircleIcon, LogoutIcon,
 } from './Icons.jsx';
 
 const NAV_BY_ROLE = {
@@ -54,15 +54,6 @@ const NAV_BY_ROLE = {
         { key: 'profile',      label: 'Profile & settings',Icon: UserIcon,        to: '/profile' },
         { key: 'help',         label: 'Help & research',   Icon: BookIcon,        to: '/help' },
     ],
-    admin: [
-        { section: 'Administration' },
-        { key: 'admin',        label: 'Dashboard',         Icon: ShieldIcon,      to: '/admin' },
-        { key: 'audit',        label: 'Audit log',         Icon: SearchIcon,      to: '/audit' },
-        { section: 'Account' },
-        { key: 'notifications',label: 'Notifications',     Icon: BellIcon,        to: '/notifications' },
-        { key: 'profile',      label: 'Profile & settings',Icon: UserIcon,        to: '/profile' },
-        { key: 'help',         label: 'Help & research',   Icon: BookIcon,        to: '/help' },
-    ],
 };
 
 
@@ -71,6 +62,7 @@ export default function Sidebar({ unreadNotifications = 0, isOpen, onClose }) {
     const location = useLocation();
     const items = (user && NAV_BY_ROLE[user.role]) || [];
     const activeKey = items.find(it => it.to && location.pathname.startsWith(it.to))?.key;
+    console.log('[Sidebar] user:', user, 'items:', items, 'pathname:', location.pathname);
 
     return (
         <motion.aside

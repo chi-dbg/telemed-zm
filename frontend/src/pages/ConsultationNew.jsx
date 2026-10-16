@@ -40,26 +40,18 @@ export default function ConsultationNew() {
     const [selected, setSelected] = useState(new Set());
     const [duration, setDuration] = useState(2);
     const [severity, setSeverity] = useState('mild');
-    const [communicationMode, setCommunicationMode] = useState('chat');
     const [freeText, setFreeText] = useState('');
     const [triage, setTriage] = useState(null);
-    const selectedSymptoms = RED_FLAGS
-        .filter(([key]) => selected.has(key))
-        .map(([key, label, severityLevel]) => ({ key, label, severityLevel }));
+
+    console.log('[ConsultationNew] render selected:', Array.from(selected));
 
     function toggle(key) {
         setSelected(s => {
             const next = new Set(s);
             if (next.has(key)) next.delete(key); else next.add(key);
+            console.log('[ConsultationNew] toggle', key, 'selectedCount:', next.size);
             return next;
         });
-    }
-
-    function handleSymptomKeyDown(e, key) {
-        if (e.key === 'Enter' || e.key === ' ') {
-            e.preventDefault();
-            toggle(key);
-        }
     }
 
     async function runTriage() {
@@ -94,7 +86,7 @@ export default function ConsultationNew() {
         }
         const blob = [
             freeText,
-            selectedSymptoms.length ? `Selected symptoms: ${selectedSymptoms.map(s => s.label).join(', ')}` : '',
+            selected.size ? `Selected: ${Array.from(selected).join(', ')}` : '',
             `Severity self-rated: ${severity}`,
             `Duration: ${duration} days`,
         ].filter(Boolean).join('\n');
@@ -103,7 +95,6 @@ export default function ConsultationNew() {
                 symptoms: blob,
                 triage_score: t?.score ?? 0,
                 triage_recommendation: t?.recommendation ?? 'routine',
-                communication_mode: communicationMode,
             });
             toast('Consultation submitted. A doctor will be assigned shortly.', 'success');
             setTimeout(() => navigate('/consultations'), 600);
@@ -116,11 +107,11 @@ export default function ConsultationNew() {
         <>
             <PageHeader
                 title="Tell us what's happening"
-                //lead="The platform runs a quick triage check — red-flag symptoms get routed to the safest pathway."
+                lead="The platform runs a quick triage check — red-flag symptoms get routed to the safest pathway."
             />
 
             <div className="banner">
-                 select your symptoms below and add a description in your own words.
+                <strong>How this works:</strong> select your symptoms below and add a description in your own words.
                 If your symptoms are routine, a doctor will review and may issue a prescription remotely.
                 If they are red-flag symptoms, the doctor will arrange an in-person visit at a clinic.
             </div>
@@ -143,64 +134,7 @@ export default function ConsultationNew() {
                 </div>
 
                 <div className="field">
-                    <label>Consultation type</label>
-                    <div className="mode-options">
-                        <label className={`mode-option ${communicationMode === 'chat' ? 'selected' : ''}`}>
-                            <input
-                                type="radio"
-                                name="communication_mode"
-                                value="chat"
-                                checked={communicationMode === 'chat'}
-                                onChange={() => setCommunicationMode('chat')}
-                            />
-                            <span>
-                                <strong>Chat consultation</strong>
-                                <small>Request a text consultation after a doctor accepts.</small>
-                            </span>
-                        </label>
-                        <label className={`mode-option ${communicationMode === 'video' ? 'selected' : ''}`}>
-                            <input
-                                type="radio"
-                                name="communication_mode"
-                                value="video"
-                                checked={communicationMode === 'video'}
-                                onChange={() => setCommunicationMode('video')}
-                            />
-                            <span>
-                                <strong>Video consultation</strong>
-                                <small>Request a camera call when a physical meeting is not possible.</small>
-                            </span>
-                        </label>
-                    </div>
-                </div>
-
-                <div className="field">
                     <label>Select all symptoms that apply</label>
-                    <div className="symptom-summary" aria-live="polite">
-                        <div className="symptom-summary-header">
-                            <strong>Selected symptoms</strong>
-                            <span>{selectedSymptoms.length} selected</span>
-                        </div>
-                        {selectedSymptoms.length ? (
-                            <div className="selected-symptom-list">
-                                {selectedSymptoms.map(symptom => (
-                                    <button
-                                        key={symptom.key}
-                                        type="button"
-                                        className={`selected-symptom-chip ${symptom.severityLevel}`}
-                                        onClick={() => toggle(symptom.key)}
-                                        title={`Remove ${symptom.label}`}
-                                    >
-                                        <span className="sev-dot" />
-                                        <span>{symptom.label}</span>
-                                        <span className="chip-remove" aria-hidden="true">x</span>
-                                    </button>
-                                ))}
-                            </div>
-                        ) : (
-                            <div className="muted small">No symptoms selected yet.</div>
-                        )}
-                    </div>
                     <motion.div className="symptom-grid" variants={staggerContainer} initial="initial" animate="animate">
                         {RED_FLAGS.map(([key, label, sev]) => (
                             <motion.div
@@ -209,16 +143,18 @@ export default function ConsultationNew() {
                                 variants={staggerItem}
                                 animate={selected.has(key) ? symptomSelectVariants.selected : undefined}
                                 onClick={() => toggle(key)}
-                                onKeyDown={e => handleSymptomKeyDown(e, key)}
-                                role="button"
-                                tabIndex={0}
-                                aria-pressed={selected.has(key)}
+                                onMouseDown={() => console.log('[ConsultationNew] mousedown', key)}
+                                onDoubleClick={() => console.log('[ConsultationNew] dblclick', key)}
                             >
                                 <span className="sev-dot" />
                                 {label}
                             </motion.div>
                         ))}
                     </motion.div>
+                </div>
+
+                <div style={{ position: 'fixed', right: 18, top: 80, background: 'rgba(0,0,0,.6)', color: 'white', padding: '6px 8px', borderRadius: 6, zIndex: 1200, fontSize: '.85rem' }}>
+                    Selected: {selected.size}
                 </div>
 
                 <div className="field">

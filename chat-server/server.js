@@ -9,7 +9,7 @@
  *
  * Architecture: each consultation is a Socket.IO "room" identified
  * by `consult-{id}`. Only the patient assigned to the consultation
- * and the accepting doctor may join the room (verified against MySQL).
+ * and the accepting doctor may join the room (verified against PostgreSQL).
  *
  * Auth: clients send the JWT (issued by PHP /auth/login) when
  * connecting. The token is verified using the same shared secret as
@@ -22,20 +22,26 @@ const cors = require('cors');
 const { Server } = require('socket.io');
 const crypto = require('crypto');
 const os = require('os');
-const mysql = require('mysql2/promise');
+const { Pool } = require('pg');
 
 // -----------------------------------------------------------------------
 // Configuration (must match the PHP api/config.php values)
 // -----------------------------------------------------------------------
-const PORT       = process.env.CHAT_PORT || 3001;
+const PORT       = Number(process.env.PORT || process.env.CHAT_PORT || 3001);
 const HOST       = process.env.CHAT_HOST || '0.0.0.0';
-const JWT_SECRET = process.env.JWT_SECRET || 'change-me-to-a-long-random-string-in-production-please-do-it';
+const JWT_SECRET = process.env.JWT_SECRET || '';
+if (process.env.APP_ENV === 'production' && !JWT_SECRET) {
+    throw new Error('JWT_SECRET must be configured in production.');
+}
+const TOKEN_SECRET = JWT_SECRET || 'change-me-to-a-long-random-string-in-production-please-do-it';
 const DB_CONFIG  = {
     host:     process.env.DB_HOST     || '127.0.0.1',
-    port:     process.env.DB_PORT     || 3306,
-    user:     process.env.DB_USER     || 'root',
+    port:     Number(process.env.DB_PORT || 5432),
+    user:     process.env.DB_USER     || 'postgres',
     password: process.env.DB_PASSWORD || '',
-    database: process.env.DB_NAME     || 'telemed_db',
+    database: process.env.DB_NAME     || 'postgres',
+    ssl:      process.env.DB_SSLMODE === 'require' ? { rejectUnauthorized: true } : false,
+    max:      10,
 };
 
 // -----------------------------------------------------------------------
@@ -56,7 +62,7 @@ function verifyJwt(token) {
     if (parts.length !== 3) return null;
     const [h, p, s] = parts;
     const expected = base64urlEncode(
-        crypto.createHmac('sha256', JWT_SECRET).update(`${h}.${p}`).digest()
+        crypto.createHmac('sha256', TOKEN_SECRET).update(`${h}.${p}`).digest()
     );
     if (expected !== s) return null;
     let payload;
@@ -69,12 +75,25 @@ function verifyJwt(token) {
 // HTTP + Socket.IO setup
 // -----------------------------------------------------------------------
 const app = express();
-app.use(cors({ origin: true, credentials: true }));
+const allowedOrigins = (process.env.CORS_ALLOWED_ORIGINS || 'http://localhost:5173,http://127.0.0.1:5173')
+    .split(',')
+    .map(origin => origin.trim())
+    .filter(Boolean);
+const corsOptions = {
+    origin(origin, callback) {
+        if (!origin || allowedOrigins.includes(origin)) {
+            return callback(null, true);
+        }
+        return callback(new Error('Origin is not allowed by CORS'));
+    },
+    credentials: true,
+};
+app.use(cors(corsOptions));
 app.get('/health', (_req, res) => res.json({ status: 'ok', service: 'telemed-chat-server' }));
 
 const server = http.createServer(app);
 const io = new Server(server, {
-    cors: { origin: true, credentials: true },
+    cors: corsOptions,
 });
 
 // JWT handshake middleware
@@ -99,21 +118,21 @@ io.use((socket, next) => {
 // -----------------------------------------------------------------------
 let pool;
 async function getPool() {
-    if (!pool) pool = mysql.createPool({ ...DB_CONFIG, waitForConnections: true, connectionLimit: 10 });
+    if (!pool) pool = new Pool(DB_CONFIG);
     return pool;
 }
 
 /** Verify the user is allowed to join a consultation room. */
 async function userBelongsToConsultation(userId, consultationId) {
     const conn = await getPool();
-    const [rows] = await conn.execute(
+    const { rows } = await conn.query(
         `SELECT c.consultation_id, c.status, pu.user_id AS pUid, du.user_id AS dUid
          FROM consultations c
          JOIN patients p   ON p.patient_id = c.patient_id
          JOIN users    pu  ON pu.user_id   = p.user_id
          LEFT JOIN doctors d ON d.doctor_id = c.doctor_id
          LEFT JOIN users   du ON du.user_id = d.user_id
-         WHERE c.consultation_id = ?`,
+         WHERE c.consultation_id = $1`,
         [consultationId]
     );
     if (!rows.length) return false;
@@ -125,12 +144,13 @@ async function userBelongsToConsultation(userId, consultationId) {
 /** Persist a chat message so it shows up on the next page load. */
 async function persistMessage(consultationId, senderUserId, role, text) {
     const conn = await getPool();
-    const [result] = await conn.execute(
+    const { rows } = await conn.query(
         `INSERT INTO chat_messages (consultation_id, sender_user_id, sender_role, message_text)
-         VALUES (?, ?, ?, ?)`,
+         VALUES ($1, $2, $3, $4)
+         RETURNING message_id`,
         [consultationId, senderUserId, role, text]
     );
-    return Number(result.insertId);
+    return Number(rows[0].message_id);
 }
 
 // -----------------------------------------------------------------------

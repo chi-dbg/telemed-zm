@@ -1,6 +1,6 @@
 @echo off
-REM Telemedicine Platform - Windows / XAMPP setup helper
-REM Run this from inside xampp\htdocs\telemed-platform after starting XAMPP.
+REM Telemedicine Platform - Windows setup helper
+REM Configure DB_HOST, DB_PORT, DB_NAME, DB_USER, DB_PASSWORD, and DB_SSLMODE first.
 
 setlocal
 echo.
@@ -10,38 +10,37 @@ echo  React + framer-motion + Vite frontend
 echo =====================================================
 echo.
 
-REM 1. Run schema and seed via XAMPP's bundled mysql client.
-SET MYSQL=C:\xampp\mysql\bin\mysql.exe
-IF NOT EXIST "%MYSQL%" (
-    echo Could not find XAMPP MySQL at %MYSQL%.
-    echo Edit setup.bat and adjust the MYSQL path, or run the SQL files manually via phpMyAdmin.
-    goto :node
-)
-echo [1/3] Loading database schema and seed data...
-"%MYSQL%" -u root < database\schema.sql
+REM 1. Apply the PostgreSQL schema and demo seed data.
+where psql >nul 2>nul
 IF ERRORLEVEL 1 (
-    echo Schema load failed. Make sure MySQL is running in the XAMPP control panel.
+    echo Could not find psql. Install PostgreSQL client tools and set PG* connection variables.
+    exit /b 1
+)
+echo [1/3] Loading PostgreSQL schema and demo seed data...
+set "PGPASSWORD=%DB_PASSWORD%"
+psql "host=%DB_HOST% port=%DB_PORT% dbname=%DB_NAME% user=%DB_USER% sslmode=%DB_SSLMODE%" -v ON_ERROR_STOP=1 -f supabase\migrations\20261015000100_initial_schema.sql
+IF ERRORLEVEL 1 (
+    echo Schema load failed. Check the PostgreSQL connection variables.
     pause & exit /b 1
 )
-"%MYSQL%" -u root < database\seed.sql
+psql "host=%DB_HOST% port=%DB_PORT% dbname=%DB_NAME% user=%DB_USER% sslmode=%DB_SSLMODE%" -v ON_ERROR_STOP=1 -f supabase\seed.sql
 IF ERRORLEVEL 1 (
     echo Seed load failed.
     pause & exit /b 1
 )
-echo Database created: telemed_db
+echo PostgreSQL schema and seed data loaded.
 echo.
 
-:node
 REM 2. Install chat-server dependencies.
 echo [2/3] Installing Node.js chat-server dependencies...
 pushd chat-server
-call npm install
+call npm ci
 popd
 
 REM 3. Install + build the React frontend.
 echo [3/3] Installing and building the React frontend (this may take a couple of minutes)...
 pushd frontend
-call npm install
+call npm ci
 call npm run build
 popd
 

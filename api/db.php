@@ -1,6 +1,6 @@
 <?php
 /**
- * Database connection (PDO singleton).
+ * PostgreSQL connection (PDO singleton).
  * NFR-Reliability: PDO with ERRMODE_EXCEPTION + atomic transactions.
  * NFR-Data Integrity: prepared statements only.
  */
@@ -16,8 +16,11 @@ class DB
             $c = $config['db'];
 
             $dsn = sprintf(
-                'mysql:host=%s;port=%s;dbname=%s;charset=%s',
-                $c['host'], $c['port'], $c['name'], $c['charset']
+                'pgsql:host=%s;port=%s;dbname=%s;sslmode=%s',
+                $c['host'],
+                $c['port'],
+                $c['name'],
+                $c['sslmode']
             );
 
             try {
@@ -27,11 +30,10 @@ class DB
                     PDO::ATTR_EMULATE_PREPARES   => false,
                 ]);
             } catch (PDOException $e) {
+                error_log('Database connection failed: ' . $e->getMessage());
                 http_response_code(500);
                 echo json_encode([
                     'error'   => 'Database connection failed',
-                    'detail'  => $e->getMessage(),
-                    'hint'    => 'Ensure XAMPP MySQL is running and database telemed_db exists.',
                 ]);
                 exit;
             }

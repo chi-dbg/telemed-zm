@@ -32,10 +32,10 @@ function rx_create(): void
     try {
         // Insert prescription with placeholder UID, then update with the real UID
         $ins = $pdo->prepare(
-            'INSERT INTO prescriptions
+            "INSERT INTO prescriptions
              (prescription_uid, consultation_id, patient_id, doctor_id, pharmacist_id,
               medication_name, dosage, frequency, duration, instructions, status)
-             VALUES ("PENDING", ?, ?, ?, ?, ?, ?, ?, ?, ?, "pending")'
+             VALUES ('PENDING', ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending')"
         );
         $ins->execute([
             $c['consultation_id'],
@@ -48,13 +48,13 @@ function rx_create(): void
             $data['duration'],
             $data['instructions'] ?? null,
         ]);
-        $pid = (int) $pdo->lastInsertId();
+        $pid = db_last_insert_id($pdo);
         $uid = generate_prescription_uid($pid);
         $pdo->prepare('UPDATE prescriptions SET prescription_uid = ? WHERE prescription_id = ?')
             ->execute([$uid, $pid]);
 
         // Mark consultation as prescribed (closes the loop)
-        $pdo->prepare('UPDATE consultations SET status = "prescribed", closed_at = NOW() WHERE consultation_id = ?')
+        $pdo->prepare("UPDATE consultations SET status = 'prescribed', closed_at = NOW() WHERE consultation_id = ?")
             ->execute([$c['consultation_id']]);
 
         $pdo->commit();

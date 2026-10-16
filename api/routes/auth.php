@@ -45,7 +45,7 @@ function auth_register(): void
 
         $hash = password_hash($data['password'], PASSWORD_BCRYPT);
         $stmt = $pdo->prepare(
-            'INSERT INTO users (full_name, email, password_hash, role, phone, is_active, account_status) VALUES (?, ?, ?, ?, ?, 0, "pending")'
+            "INSERT INTO users (full_name, email, password_hash, role, phone, is_active, account_status) VALUES (?, ?, ?, ?, ?, 0, 'pending')"
         );
         $stmt->execute([
             $data['full_name'],
@@ -54,7 +54,7 @@ function auth_register(): void
             $role,
             $data['phone'] ?? null,
         ]);
-        $userId = (int) $pdo->lastInsertId();
+        $userId = db_last_insert_id($pdo);
 
         // Role-specific profile row
         if ($role === 'patient') {
@@ -96,7 +96,7 @@ function auth_register(): void
         $pdo->commit();
         audit_log($userId, $role, 'user.registration_submitted', 'user', $userId, "New $role registration awaiting administrator approval");
 
-        $stmt = $pdo->query('SELECT user_id FROM users WHERE role = "admin" AND is_active = 1 AND account_status = "approved"');
+        $stmt = $pdo->query("SELECT user_id FROM users WHERE role = 'admin' AND is_active = 1 AND account_status = 'approved'");
         foreach ($stmt->fetchAll() as $admin) {
             notify((int)$admin['user_id'], 'New account awaiting approval', $data['full_name'] . " registered as $role.", 'system', $userId);
         }
@@ -142,7 +142,7 @@ function auth_login(): void
     }
 
     // Update last_login
-    DB::conn()->prepare('UPDATE users SET last_login = NOW() WHERE user_id = ?')
+    DB::conn()->prepare('UPDATE users SET last_login = CURRENT_TIMESTAMP WHERE user_id = ?')
         ->execute([$user['user_id']]);
 
     audit_log((int)$user['user_id'], $user['role'], 'user.login', 'user', (int)$user['user_id'], 'Login success');
@@ -170,11 +170,13 @@ function auth_login(): void
 function auth_logout(): void
 {
     // Clear cookie
+    $config = require __DIR__ . '/../config.php';
     setcookie('telemed_token', '', [
         'expires'  => time() - 3600,
         'path'     => '/',
         'httponly' => true,
-        'samesite' => 'Lax',
+        'secure'   => $config['app']['env'] === 'production',
+        'samesite' => $config['app']['env'] === 'production' ? 'None' : 'Lax',
     ]);
     send_json(['message' => 'Logged out']);
 }
@@ -216,7 +218,7 @@ function set_session_cookie(string $token): void
         'expires'  => time() + $config['jwt']['ttl_seconds'],
         'path'     => '/',
         'httponly' => true,
-        'samesite' => 'Lax',
-        // 'secure' => true,  // enable in HTTPS production
+        'secure'   => $config['app']['env'] === 'production',
+        'samesite' => $config['app']['env'] === 'production' ? 'None' : 'Lax',
     ]);
 }

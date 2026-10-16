@@ -3,22 +3,28 @@
  * Application configuration
  *
  * Override these values via environment variables in production.
- * For XAMPP local development the defaults below work out of the box.
+ * Set the variables below to your PostgreSQL/Supabase credentials.
  */
+
+$appEnv = getenv('APP_ENV') ?: 'development';
+$jwtSecret = getenv('JWT_SECRET') ?: '';
+if ($appEnv === 'production' && $jwtSecret === '') {
+    throw new RuntimeException('JWT_SECRET must be configured in production.');
+}
 
 return [
     'db' => [
         'host'     => getenv('DB_HOST') ?: '127.0.0.1',
-        'port'     => getenv('DB_PORT') ?: '3306',
-        'name'     => getenv('DB_NAME') ?: 'telemed_db',
-        'user'     => getenv('DB_USER') ?: 'root',
+        'port'     => getenv('DB_PORT') ?: '5432',
+        'name'     => getenv('DB_NAME') ?: 'postgres',
+        'user'     => getenv('DB_USER') ?: 'postgres',
         'password' => getenv('DB_PASSWORD') ?: '',
-        'charset'  => 'utf8mb4',
+        'sslmode'  => getenv('DB_SSLMODE') ?: 'disable',
     ],
 
     'jwt' => [
         // CHANGE THIS IN PRODUCTION
-        'secret'     => getenv('JWT_SECRET') ?: 'change-me-to-a-long-random-string-in-production-please-do-it',
+        'secret'     => $jwtSecret ?: 'change-me-to-a-long-random-string-in-production-please-do-it',
         'algo'       => 'HS256',
         'issuer'     => 'telemed-platform',
         // 30-minute idle session per NFR-Security
@@ -26,21 +32,15 @@ return [
     ],
 
     'cors' => [
-        // Frontend origin during development
-        'allowed_origins' => [
-            'http://localhost',
-            'http://127.0.0.1',
-        ],
+        'allowed_origins' => array_values(array_filter(array_map(
+            'trim',
+            explode(',', getenv('CORS_ALLOWED_ORIGINS') ?: 'http://localhost:5173,http://127.0.0.1:5173')
+        ))),
     ],
 
     'app' => [
         'name'    => 'Web-Based Telemedicine Platform',
         'version' => '1.0.0-prototype',
-        'env'     => getenv('APP_ENV') ?: 'development',
-    ],
-
-    'chat_server' => [
-        // Public URL of the Node.js Socket.IO server (frontend connects here)
-        'url' => getenv('CHAT_URL') ?: 'http://localhost:3001',
+        'env'     => $appEnv,
     ],
 ];

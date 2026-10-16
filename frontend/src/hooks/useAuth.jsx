@@ -35,15 +35,10 @@ export function AuthProvider({ children }) {
 
     const register = useCallback(async (data) => {
         const r = await API.register(data);
-        if (r.token) {
-            localStorage.setItem('telemed_token', r.token);
-            setUser(r.user);
-        } else {
-            localStorage.removeItem('telemed_token');
-            setUser(null);
-        }
-        console.log('[Auth] register -> response:', r);
-        return r;
+        if (r.token) localStorage.setItem('telemed_token', r.token);
+        setUser(r.user);
+        console.log('[Auth] register -> user:', r.user);
+        return r.user;
     }, []);
 
     const logout = useCallback(async () => {
@@ -78,7 +73,7 @@ export function useRequireAuth(allowedRoles) {
             return;
         }
         if (allowedRoles && !allowedRoles.includes(user.role)) {
-            navigate(user.role === 'admin' ? '/admin' : '/overview', { replace: true });
+            navigate('/overview', { replace: true });
         }
     }, [user, loading, allowedRoles, navigate, location.pathname]);
 

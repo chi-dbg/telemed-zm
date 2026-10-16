@@ -1,6 +1,7 @@
 # Build instructions
 
-This is a **React + framer-motion + Vite** project. The frontend source lives in `frontend/` and must be built before XAMPP can serve it.
+This is a **React + framer-motion + Vite** project. The PHP API and Socket.IO
+service use the Supabase PostgreSQL database configured in `.env.example`.
 
 ## One-time setup
 
@@ -15,7 +16,7 @@ npm install
 
 This creates `frontend/node_modules/` (~150 MB, gitignored).
 
-## Build for XAMPP (production)
+## Build for XAMPP (local Apache)
 
 ```bash
 cd frontend
@@ -35,9 +36,15 @@ cd frontend
 npm run dev
 ```
 
-Vite starts on port 5173 with HMR. The dev server proxies `/telemed-platform/api/*` to your local Apache, so the PHP backend keeps working without changes.
+Vite starts on port 5173 with HMR. The dev server proxies `/telemed-platform/api/*` to your local Apache/PHP API.
 
 Open `http://localhost:5173/`.
+
+## Build for Render
+
+The repository's `render.yaml` builds the API, chat service, and frontend as
+separate services. The frontend build writes to `frontend/dist/`; configure the
+database and shared secrets in Render as described in `README.md`.
 
 ## Start the chat server (separate terminal)
 
@@ -58,7 +65,8 @@ For full functionality (frontend + API + realtime chat), you need:
 
 | Service | How to start | Port |
 |---|---|---|
-| Apache + MySQL (XAMPP) | XAMPP Control Panel → Start | 80 + 3306 |
+| Apache + PHP with `pdo_pgsql` | XAMPP Control Panel → Start | 80 |
+| Supabase PostgreSQL | Supabase project settings | 5432 |
 | Node.js chat server | `cd chat-server && npm start` | 3001 |
 | React frontend (built) | served by Apache from `public/` | 80 |
 | React frontend (dev) | `cd frontend && npm run dev` | 5173 |

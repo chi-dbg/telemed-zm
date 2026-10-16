@@ -69,7 +69,7 @@ function apply_cors(): void
     $allowed = $config['cors']['allowed_origins'];
 
     // Allow same-origin requests automatically; explicit allowlist for cross-origin.
-    if ($origin && in_array(parse_url($origin, PHP_URL_SCHEME) . '://' . parse_url($origin, PHP_URL_HOST), $allowed, true)) {
+    if ($origin && in_array($origin, $allowed, true)) {
         header("Access-Control-Allow-Origin: $origin");
         header('Access-Control-Allow-Credentials: true');
     }

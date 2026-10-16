@@ -11,27 +11,7 @@ export default function Layout({ title, subtitle, allowedRoles }) {
     const { user, loading } = useRequireAuth(allowedRoles);
     const [unread, setUnread] = useState(0);
     const [mobileOpen, setMobileOpen] = useState(false);
-    const [compactShell, setCompactShell] = useState(false);
     const location = useLocation();
-
-    useEffect(() => {
-        const query = window.matchMedia('(max-width: 1180px), (pointer: coarse)');
-        const updateCompactShell = () => setCompactShell(query.matches);
-
-        updateCompactShell();
-
-        if (query.addEventListener) {
-            query.addEventListener('change', updateCompactShell);
-            return () => query.removeEventListener('change', updateCompactShell);
-        }
-
-        query.addListener(updateCompactShell);
-        return () => query.removeListener(updateCompactShell);
-    }, []);
-
-    useEffect(() => {
-        setMobileOpen(false);
-    }, [location.pathname]);
 
     useEffect(() => {
         if (!user) return;
@@ -39,6 +19,14 @@ export default function Layout({ title, subtitle, allowedRoles }) {
             .then(r => setUnread(r.notifications.filter(n => !n.is_read).length))
             .catch(() => {});
     }, [user, location.pathname]);
+
+    useEffect(() => {
+        console.log('[Layout] pathname ->', location.pathname);
+    }, [location.pathname]);
+
+    useEffect(() => {
+        console.log('[Layout] mobileOpen ->', mobileOpen);
+    }, [mobileOpen]);
 
     if (loading || !user) {
         return (
@@ -54,7 +42,7 @@ export default function Layout({ title, subtitle, allowedRoles }) {
     }
 
     return (
-        <div className={['app', compactShell ? 'compact-shell' : '', user?.role ? `role-${user.role}` : '', mobileOpen ? 'menu-open' : ''].filter(Boolean).join(' ')}>
+        <div className="app">
             <Sidebar
                 unreadNotifications={unread}
                 isOpen={mobileOpen}

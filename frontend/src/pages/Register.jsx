@@ -163,7 +163,7 @@ export default function Register() {
                         <div style={{ color: 'white', fontWeight: 700, fontSize: '1.1rem' }}>Telemed ZM</div>
                     </div>
                     <h1>Join the platform.</h1>
-                    <p>Whether you're a patient, a licensed doctor, or a registered pharmacy — we'll set you up in seconds.</p>
+                    <p>Whether you're a patient, a licensed doctor, or a registered pharmacy we'll set you up in seconds.</p>
 
                     <motion.div className="features" variants={staggerContainer} initial="initial" animate="animate">
                         {[
@@ -185,8 +185,9 @@ export default function Register() {
 
             <motion.div className="auth-form" variants={slideFromRight} initial="initial" animate="animate">
                 <div className="auth-form-inner">
-                    <h2>Create your account</h2>
-                    <p className="lead">Pick your role and the form will adapt.</p>
+                    <h2>Create your account</h2><br>
+
+                    </br>
 
                     {error && <Alert kind="error">{error}</Alert>}
                     {submittedUser && <Alert kind="success">Registration submitted for administrator approval. You will be able to sign in after your account is approved.</Alert>}

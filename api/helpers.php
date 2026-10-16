@@ -139,7 +139,12 @@ function notify(int $userId, string $title, string $message, string $type, ?int 
         'INSERT INTO notifications (user_id, title, message, type, related_id) VALUES (?, ?, ?, ?, ?)'
     );
     $stmt->execute([$userId, $title, $message, $type, $relatedId]);
-    return (int) DB::conn()->lastInsertId();
+    return db_last_insert_id(DB::conn());
+}
+
+function db_last_insert_id(PDO $pdo): int
+{
+    return (int) $pdo->query('SELECT LASTVAL()')->fetchColumn();
 }
 
 /**

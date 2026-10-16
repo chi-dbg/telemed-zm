@@ -69,7 +69,7 @@ h2 { font-size: 1.25rem; letter-spacing: -.005em; }
 h3 { font-size: 1.05rem; }
 code { background: var(--surface-2); padding: 1px 6px; border-radius: 4px; font-size: .88em; color: var(--primary-dark); }
 
-.muted        { color: var(--muted); }
+.muted        { color: var(--text); }
 .muted-light  { color: var(--muted-light); }
 .small        { font-size: .85rem; }
 .right        { text-align: right; }
@@ -3223,6 +3223,11 @@ footer.landing-footer {
 .app.compact-shell .user-info {
     display: none !important;
 }
+.app.compact-shell .mobile-search-btn {
+    display: grid !important;
+    place-items: center;
+    flex: 0 0 auto !important;
+}
 
 .app.compact-shell .user-menu {
     flex: 0 0 auto !important;
@@ -3385,9 +3390,10 @@ footer.landing-footer {
 }
 
 @media (max-width: 620px) {
-    .admin-kpi-grid .kpi-card {
+    .app-main .responsive-tile-grid .kpi-card {
         height: 126px;
         min-height: 126px;
+        box-sizing: border-box;
     }
 }
 /* Administrator profile fields need a stronger boundary on the glass surface. */
@@ -3454,3 +3460,77 @@ footer.landing-footer {
 }
 .landing-nav .links .btn:hover,
 .landing-nav .links .btn-ghost:hover { filter: brightness(.96); }
+
+/* Consultation cards: full-width, readable stack on compact screens. */
+@media (max-width: 620px) {
+    .app-main .consultation-tile-grid {
+        grid-template-columns: 1fr;
+        grid-auto-rows: auto;
+        gap: 12px;
+    }
+
+    .app-main .consultation-tile-grid .consultation-tile {
+        width: 100%;
+        min-height: 238px;
+        aspect-ratio: auto;
+        padding: 18px;
+        gap: 14px;
+        box-sizing: border-box;
+    }
+
+    .app-main .consultation-tile-grid .consultation-tile-header,
+    .app-main .consultation-tile-grid .consultation-tile-main {
+        flex-direction: row;
+        align-items: flex-start;
+        gap: 12px;
+    }
+
+    .app-main .consultation-tile-grid .consultation-tile-meta {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 14px;
+        margin-top: auto;
+        padding-top: 14px;
+    }
+
+    .app-main .consultation-tile-grid .consultation-tile-label {
+        margin-bottom: 5px;
+        font-size: .76rem;
+        line-height: 1.25;
+    }
+
+    .app-main .consultation-tile-grid .consultation-tile strong {
+        font-size: 1rem;
+        line-height: 1.35;
+    }
+
+    .app-main .consultation-tile-grid .pill,
+    .app-main .consultation-tile-grid .tag,
+    .app-main .consultation-tile-grid .btn-sm {
+        font-size: .8rem;
+    }
+}
+/* Equal KPI card tracks for every overview on phones. */
+@media (max-width: 620px) {
+    .app-main .responsive-tile-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+        grid-auto-rows: 126px !important;
+        align-items: stretch !important;
+        gap: 10px !important;
+    }
+
+    .app-main .responsive-tile-grid > .kpi-card,
+    .app-main .responsive-tile-grid > a.kpi-card,
+    .app-main .responsive-tile-grid > div.kpi-card {
+        width: 100% !important;
+        height: 100% !important;
+        min-height: 0 !important;
+        margin: 0 !important;
+        box-sizing: border-box !important;
+    }
+}
+
+@media (max-width: 320px) {
+    .app-main .responsive-tile-grid {
+        grid-template-columns: 1fr !important;
+    }
+}

@@ -1,16 +1,14 @@
 /**
  * REST API client for the Telemed ZM PHP backend.
  *
- * Base URL: /telemed-platform/api (relative). The Vite dev server proxies
- * this to your local XAMPP; the production build runs on the same host
- * as Apache so the request hits PHP directly.
+ * Base URL: local XAMPP by default; VITE_API_BASE_URL selects the deployed API.
  *
  * Authentication: HTTP-only cookie set by the PHP /auth/login endpoint.
  * For Socket.IO we additionally store the JWT in localStorage because
  * the chat server can't read HTTP-only cookies.
  */
 
-const BASE = '/telemed-platform/api';
+const BASE = (import.meta.env.VITE_API_BASE_URL || '/telemed-platform/api').replace(/\/$/, '');
 
 async function request(path, opts = {}) {
     const { method = 'GET', body, query } = opts;
@@ -24,6 +22,8 @@ async function request(path, opts = {}) {
         credentials: 'include',
         headers: { Accept: 'application/json' },
     };
+    const token = typeof localStorage === 'undefined' ? null : localStorage.getItem('telemed_token');
+    if (token) init.headers.Authorization = `Bearer ${token}`;
     if (body !== undefined) {
         init.headers['Content-Type'] = 'application/json';
         init.body = JSON.stringify(body);

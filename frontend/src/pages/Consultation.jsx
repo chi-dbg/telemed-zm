@@ -950,7 +950,7 @@ export default function Consultation() {
         rightPanel = (
             <>
                 <Card>
-                    <h3>What happens next</h3>
+
                     <p className="muted">You requested a {communicationMode} consultation. Once a doctor accepts it, the {communicationMode} module opens on this page.</p>
                     <div className="gap-sm"><Pill status={c.status} /></div>
                 </Card>

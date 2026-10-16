@@ -254,7 +254,7 @@ export default function Landing() {
             </section>
 
             <footer className="landing-footer">
-             ©2026.
+             call us on 0777159404 / 0765272070. Email: telemed@zm.org. / visit us on telemedzm.com ©2026.
             </footer>
         </>
     );

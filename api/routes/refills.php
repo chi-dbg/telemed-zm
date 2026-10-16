@@ -71,7 +71,7 @@ function refill_create(): void
         $pid,
         $data['note'] ?? null,
     ]);
-    $rid = (int) DB::conn()->lastInsertId();
+    $rid = db_last_insert_id(DB::conn());
     audit_log((int)$auth['uid'], 'patient', 'refill.requested', 'refill', $rid, "For RX #{$rx['prescription_id']}");
 
     // Notify the prescribing doctor
@@ -113,9 +113,9 @@ function refill_decision(string $id): void
 
     $newStatus = $data['decision'] === 'approve' ? 'approved' : 'denied';
     $pdo->prepare(
-        'UPDATE refill_requests
-         SET status = ?, reviewed_by_doctor_id = ?, reviewed_at = NOW(), note = COALESCE(note, "")
-         WHERE request_id = ?'
+        "UPDATE refill_requests
+         SET status = ?, reviewed_by_doctor_id = ?, reviewed_at = NOW(), note = COALESCE(note, '')
+         WHERE request_id = ?"
     )->execute([$newStatus, $did, $rid]);
 
     audit_log((int)$auth['uid'], 'doctor', 'refill.' . $newStatus, 'refill', $rid, '');
@@ -134,7 +134,7 @@ function refill_decision(string $id): void
 
     // If approved, the existing prescription gets its status reset to 'pending' so the pharmacy sees it again.
     if ($newStatus === 'approved') {
-        $pdo->prepare('UPDATE prescriptions SET status = "pending", dispensed_at = NULL WHERE prescription_id = ?')
+        $pdo->prepare("UPDATE prescriptions SET status = 'pending', dispensed_at = NULL WHERE prescription_id = ?")
             ->execute([(int)$rr['prescription_id']]);
     }
 

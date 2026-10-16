@@ -51,7 +51,7 @@ function allergy_create(): void
         $data['reaction'] ?? null,
         $data['noted_on'] ?? null,
     ]);
-    $id = (int) DB::conn()->lastInsertId();
+    $id = db_last_insert_id(DB::conn());
     audit_log((int)$auth['uid'], 'patient', 'allergy.created', 'allergy', $id, "Allergen: {$data['allergen']}");
     send_json(['message' => 'Allergy added', 'allergy_id' => $id], 201);
 }
@@ -106,7 +106,7 @@ function condition_create(): void
         $data['notes'] ?? null,
         isset($data['is_active']) ? (int)!!$data['is_active'] : 1,
     ]);
-    $id = (int) DB::conn()->lastInsertId();
+    $id = db_last_insert_id(DB::conn());
     audit_log((int)$auth['uid'], 'patient', 'condition.created', 'condition', $id, $data['condition_name']);
     send_json(['message' => 'Condition added', 'condition_id' => $id], 201);
 }

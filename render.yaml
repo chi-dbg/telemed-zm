@@ -1,0 +1,89 @@
+services:
+  - type: web
+    name: telemed-api
+    runtime: docker
+    rootDir: api
+    dockerfilePath: ./Dockerfile
+    dockerContext: .
+    healthCheckPath: /health
+    envVars:
+      - key: APP_ENV
+        value: production
+      - key: DB_HOST
+        sync: false
+      - key: DB_PORT
+        value: "5432"
+      - key: DB_NAME
+        value: postgres
+      - key: DB_USER
+        sync: false
+      - key: DB_PASSWORD
+        sync: false
+      - key: DB_SSLMODE
+        value: require
+      - key: JWT_SECRET
+        generateValue: true
+      - key: CORS_ALLOWED_ORIGINS
+        value: https://telemed-frontend.onrender.com
+
+  - type: web
+    name: telemed-chat
+    runtime: node
+    rootDir: chat-server
+    buildCommand: npm ci
+    startCommand: npm start
+    healthCheckPath: /health
+    envVars:
+      - key: CHAT_HOST
+        value: 0.0.0.0
+      - key: APP_ENV
+        value: production
+      - key: JWT_SECRET
+        fromService:
+          type: web
+          name: telemed-api
+          envVarKey: JWT_SECRET
+      - key: DB_HOST
+        fromService:
+          type: web
+          name: telemed-api
+          envVarKey: DB_HOST
+      - key: DB_PORT
+        fromService:
+          type: web
+          name: telemed-api
+          envVarKey: DB_PORT
+      - key: DB_NAME
+        fromService:
+          type: web
+          name: telemed-api
+          envVarKey: DB_NAME
+      - key: DB_USER
+        fromService:
+          type: web
+          name: telemed-api
+          envVarKey: DB_USER
+      - key: DB_PASSWORD
+        fromService:
+          type: web
+          name: telemed-api
+          envVarKey: DB_PASSWORD
+      - key: DB_SSLMODE
+        fromService:
+          type: web
+          name: telemed-api
+          envVarKey: DB_SSLMODE
+      - key: CORS_ALLOWED_ORIGINS
+        value: https://telemed-frontend.onrender.com
+
+  - type: web
+    name: telemed-frontend
+    runtime: static
+    rootDir: frontend
+    buildCommand: npm ci && npm run build:render
+    staticPublishPath: dist
+    envVars:
+      - key: VITE_API_BASE_URL
+        value: https://telemed-api.onrender.com
+      - key: VITE_CHAT_SERVER_URL
+        value: https://telemed-chat.onrender.com

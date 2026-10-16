@@ -37,27 +37,27 @@ function audit_list(): void
         // Patients see actions where the entity belongs to them.
         $pid = profile_id_for_user($uid, 'patient');
         $stmt = $pdo->prepare(
-            'SELECT a.*, u.full_name AS actor_name
+            "SELECT a.*, u.full_name AS actor_name
              FROM audit_log a
              LEFT JOIN users u ON u.user_id = a.actor_user_id
              WHERE
-                (a.entity_type = "consultation" AND a.entity_id IN (SELECT consultation_id FROM consultations WHERE patient_id = ?))
-                OR (a.entity_type = "prescription" AND a.entity_id IN (SELECT prescription_id FROM prescriptions WHERE patient_id = ?))
-                OR (a.entity_type = "referral"     AND a.entity_id IN (SELECT referral_id    FROM referrals    WHERE patient_id = ?))
-                OR (a.entity_type = "user"         AND a.entity_id = ?)
-             ORDER BY a.created_at DESC LIMIT ' . $limit
+                (a.entity_type = 'consultation' AND a.entity_id IN (SELECT consultation_id FROM consultations WHERE patient_id = ?))
+                OR (a.entity_type = 'prescription' AND a.entity_id IN (SELECT prescription_id FROM prescriptions WHERE patient_id = ?))
+                OR (a.entity_type = 'referral'     AND a.entity_id IN (SELECT referral_id    FROM referrals    WHERE patient_id = ?))
+                OR (a.entity_type = 'user'         AND a.entity_id = ?)
+             ORDER BY a.created_at DESC LIMIT " . $limit
         );
         $stmt->execute([$pid, $pid, $pid, $uid]);
     } elseif ($role === 'pharmacist') {
         $phid = profile_id_for_user($uid, 'pharmacist');
         $stmt = $pdo->prepare(
-            'SELECT a.*, u.full_name AS actor_name
+            "SELECT a.*, u.full_name AS actor_name
              FROM audit_log a
              LEFT JOIN users u ON u.user_id = a.actor_user_id
              WHERE
                 a.actor_user_id = ?
-                OR (a.entity_type = "prescription" AND a.entity_id IN (SELECT prescription_id FROM prescriptions WHERE pharmacist_id = ?))
-             ORDER BY a.created_at DESC LIMIT ' . $limit
+                OR (a.entity_type = 'prescription' AND a.entity_id IN (SELECT prescription_id FROM prescriptions WHERE pharmacist_id = ?))
+             ORDER BY a.created_at DESC LIMIT " . $limit
         );
         $stmt->execute([$uid, $phid]);
     } else {

@@ -9,10 +9,9 @@ import Card from '../components/Card.jsx';
 import Pill from '../components/Pill.jsx';
 import Empty from '../components/Empty.jsx';
 import {
-    MessageIcon, PillIcon, HospitalIcon, BookIcon, UserIcon, BellIcon,
-    SearchIcon, ShieldIcon, MailIcon,
+    MessageIcon, PillIcon, HospitalIcon, ShieldIcon, MailIcon,
 } from '../components/Icons.jsx';
-import { fmtDateTime, truncate, statusLabel, safe } from '../lib/helpers.js';
+import { fmtDateTime, truncate, safe } from '../lib/helpers.js';
 import { staggerContainer, staggerItem } from '../lib/animations.js';
 
 const ICON_MAP = {
@@ -141,15 +140,6 @@ export default function Overview() {
                 </Card>
 
                 <div>
-                    <Card>
-                        <h3>Quick links</h3>
-                        <ul className="list-clean">
-                            <li><span className="quick-link-icon"><BookIcon size={16} /></span> <Link to="/help">Research alignment &amp; FAQ</Link></li>
-                            <li><span className="quick-link-icon"><UserIcon size={16} /></span> <Link to="/profile">Update your profile</Link></li>
-                            <li><span className="quick-link-icon"><BellIcon size={16} /></span> <Link to="/notifications">View notifications</Link></li>
-                            <li><span className="quick-link-icon"><SearchIcon size={16} /></span> <Link to="/audit">Audit log of your activity</Link></li>
-                        </ul>
-                    </Card>
                     <Card style={{ background: 'var(--primary-tint)', border: '1px solid var(--primary-soft)' }}>
                         <h3 style={{ color: 'var(--primary-dark)', display: 'flex', alignItems: 'center', gap: 8 }}>
                             <ShieldIcon size={18} /> Your security

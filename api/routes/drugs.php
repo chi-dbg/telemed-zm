@@ -14,7 +14,7 @@ function drugs_list(): void
     $q = trim($_GET['q'] ?? '');
     $pdo = DB::conn();
     if ($q !== '') {
-        $stmt = $pdo->prepare('SELECT * FROM drugs WHERE name LIKE ? ORDER BY name LIMIT 100');
+        $stmt = $pdo->prepare('SELECT * FROM drugs WHERE name ILIKE ? ORDER BY name LIMIT 100');
         $stmt->execute(['%' . $q . '%']);
     } else {
         $stmt = $pdo->query('SELECT * FROM drugs ORDER BY name LIMIT 200');
