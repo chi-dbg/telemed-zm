@@ -42,7 +42,7 @@ export default function Layout({ title, subtitle, allowedRoles }) {
     }
 
     return (
-        <div className="app">
+        <div className={`app role-${user.role}`}>
             <Sidebar
                 unreadNotifications={unread}
                 isOpen={mobileOpen}
