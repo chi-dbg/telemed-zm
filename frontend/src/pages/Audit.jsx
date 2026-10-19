@@ -1,7 +1,6 @@
 import { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
 import { API } from '../api/client.js';
-import { useAuth } from '../hooks/useAuth.jsx';
 import PageHeader from '../components/PageHeader.jsx';
 import Empty from '../components/Empty.jsx';
 import { fmtDateTime } from '../lib/helpers.js';
@@ -9,7 +8,6 @@ import { staggerContainer, staggerItem } from '../lib/animations.js';
 import { FileSearchIcon } from '../components/Icons.jsx';
 
 export default function Audit() {
-    const { user } = useAuth();
     const [items, setItems] = useState([]);
 
     useEffect(() => {
@@ -20,17 +18,8 @@ export default function Audit() {
         <>
             <PageHeader
                 title="Audit log"
-                lead="Immutable trail of significant events. Implements FR-S-04 and supports SI 43 of 2023 traceability requirements."
+                lead="Administrator-only record of significant platform activity."
             />
-
-            <div className="banner">
-                <strong>What you see here:</strong>{' '}
-                {user?.role === 'patient'
-                    ? 'every action involving your records — consultations, prescriptions, referrals, profile changes.'
-                    : user?.role === 'doctor'
-                    ? 'every action you have personally taken on the platform.'
-                    : 'every action you have taken plus prescription events at your pharmacy.'}
-            </div>
 
             {items.length === 0 ? (
                 <Empty Icon={FileSearchIcon} title="No audit entries yet" message="Events will appear here as you use the platform." />

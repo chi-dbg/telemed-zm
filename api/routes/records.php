@@ -10,13 +10,16 @@ require_once __DIR__ . '/../middleware.php';
 
 function rec_list(): void
 {
-    $auth = require_auth(['doctor']);
+    $auth = require_auth();
     $uid  = (int) $auth['uid'];
     $pdo  = DB::conn();
 
     // Determine which patient's records to fetch
     $patientId = null;
-    if ($auth['role'] === 'doctor') {
+    $includeNotes = $auth['role'] === 'doctor';
+    if ($auth['role'] === 'patient') {
+        $patientId = profile_id_for_user($uid, 'patient');
+    } elseif ($auth['role'] === 'doctor') {
         // Doctor can request a specific patient's records via ?patient_id= - they must
         // have at least one consultation with that patient.
         $requested = isset($_GET['patient_id']) ? (int)$_GET['patient_id'] : null;
@@ -71,22 +74,25 @@ function rec_list(): void
     );
     $ref->execute([$patientId]);
 
-    // Notes
-    $notes = $pdo->prepare(
-        'SELECT hr.*, du.full_name AS doctor_name
-         FROM health_records hr
-         LEFT JOIN doctors d ON d.doctor_id = hr.doctor_id
-         LEFT JOIN users du ON du.user_id = d.user_id
-         WHERE hr.patient_id = ? ORDER BY hr.created_at DESC'
-    );
-    $notes->execute([$patientId]);
+    $notes = [];
+    if ($includeNotes) {
+        $notesQuery = $pdo->prepare(
+            'SELECT hr.*, du.full_name AS doctor_name
+             FROM health_records hr
+             LEFT JOIN doctors d ON d.doctor_id = hr.doctor_id
+             LEFT JOIN users du ON du.user_id = d.user_id
+             WHERE hr.patient_id = ? ORDER BY hr.created_at DESC'
+        );
+        $notesQuery->execute([$patientId]);
+        $notes = $notesQuery->fetchAll();
+    }
 
     send_json([
         'patient'        => $patient,
         'consultations'  => $cons->fetchAll(),
         'prescriptions'  => $rx->fetchAll(),
         'referrals'      => $ref->fetchAll(),
-        'notes'          => $notes->fetchAll(),
+        'notes'          => $notes,
     ]);
 }
 
@@ -119,41 +125,6 @@ function rec_create(): void
     send_json(['message' => 'Record added', 'record_id' => $rid], 201);
 }
 
-/* ---- Patient asks their most recent doctor for a record copy ---- */
-function rec_request_copy(): void
-{
-    $auth = require_auth(['patient']);
-    $pdo = DB::conn();
-    $patientId = profile_id_for_user((int)$auth['uid'], 'patient');
-
-    $doctor = $pdo->prepare(
-        'SELECT u.user_id, u.full_name
-         FROM consultations c
-         JOIN doctors d ON d.doctor_id = c.doctor_id
-         JOIN users u ON u.user_id = d.user_id
-         WHERE c.patient_id = ? AND c.doctor_id IS NOT NULL
-         ORDER BY COALESCE(c.closed_at, c.started_at, c.requested_at) DESC
-         LIMIT 1'
-    );
-    $doctor->execute([$patientId]);
-    $recipient = $doctor->fetch();
-
-    if (!$recipient) {
-        send_json(['error' => 'A doctor can provide a record copy after your first consultation'], 422);
-    }
-
-    notify(
-        (int)$recipient['user_id'],
-        'Medical record copy requested',
-        $auth['email'] . ' has requested a copy of their medical record. Review their patient record and provide it directly.',
-        'record_request',
-        $patientId
-    );
-    audit_log((int)$auth['uid'], 'patient', 'record.copy_requested', 'health_record', $patientId, 'Requested from ' . $recipient['full_name']);
-
-    send_json(['message' => 'Your request has been sent to ' . $recipient['full_name'] . '.']);
-}
-
 function medical_docx_paragraph(string $text, bool $heading = false): string
 {
     $value = htmlspecialchars($text, ENT_XML1 | ENT_QUOTES, 'UTF-8');
@@ -163,12 +134,15 @@ function medical_docx_paragraph(string $text, bool $heading = false): string
 
 function rec_export(): void
 {
-    $auth = require_auth(['doctor']);
+    $auth = require_auth();
     $uid = (int)$auth['uid'];
     $pdo = DB::conn();
     $patientId = 0;
 
-    if ($auth['role'] === 'doctor') {
+    $includeNotes = $auth['role'] === 'doctor';
+    if ($auth['role'] === 'patient') {
+        $patientId = (int)profile_id_for_user($uid, 'patient');
+    } elseif ($auth['role'] === 'doctor') {
         $patientId = (int)($_GET['patient_id'] ?? 0);
         $doctorId = (int)profile_id_for_user($uid, 'doctor');
         $access = $pdo->prepare('SELECT 1 FROM consultations WHERE patient_id = ? AND doctor_id = ? LIMIT 1');
@@ -185,10 +159,12 @@ function rec_export(): void
         'Consultations' => ['SELECT c.requested_at, c.status, c.submitted_symptoms, c.diagnosis_notes, u.full_name AS doctor_name FROM consultations c LEFT JOIN doctors d ON d.doctor_id = c.doctor_id LEFT JOIN users u ON u.user_id = d.user_id WHERE c.patient_id = ? ORDER BY c.requested_at DESC', static fn($r) => 'Date: ' . $r['requested_at'] . ' | Doctor: ' . ($r['doctor_name'] ?? '-') . ' | Status: ' . $r['status'] . ' | Symptoms: ' . $r['submitted_symptoms'] . ' | Diagnosis: ' . ($r['diagnosis_notes'] ?? '-')],
         'Prescriptions' => ['SELECT rx.prescription_uid, rx.medication_name, rx.dosage, rx.frequency, rx.duration, rx.status, ph.pharmacy_name FROM prescriptions rx LEFT JOIN pharmacists ph ON ph.pharmacist_id = rx.pharmacist_id WHERE rx.patient_id = ? ORDER BY rx.issued_at DESC', static fn($r) => 'ID: ' . $r['prescription_uid'] . ' | Medication: ' . $r['medication_name'] . ' | ' . $r['dosage'] . ' | ' . $r['frequency'] . ' | ' . $r['duration'] . ' | Pharmacy: ' . ($r['pharmacy_name'] ?? '-') . ' | Status: ' . $r['status']],
         'Referrals' => ['SELECT clinic_name, appointment_date, appointment_time, referral_reason, status FROM referrals WHERE patient_id = ? ORDER BY appointment_date DESC', static fn($r) => 'Clinic: ' . $r['clinic_name'] . ' | Appointment: ' . $r['appointment_date'] . ' ' . $r['appointment_time'] . ' | Reason: ' . $r['referral_reason'] . ' | Status: ' . $r['status']],
-        'Doctor notes' => ['SELECT hr.title, hr.content, hr.created_at, u.full_name AS doctor_name FROM health_records hr LEFT JOIN doctors d ON d.doctor_id = hr.doctor_id LEFT JOIN users u ON u.user_id = d.user_id WHERE hr.patient_id = ? ORDER BY hr.created_at DESC', static fn($r) => 'Title: ' . $r['title'] . ' | Date: ' . $r['created_at'] . ' | Doctor: ' . ($r['doctor_name'] ?? '-') . ' | Note: ' . $r['content']],
         'Allergies' => ['SELECT allergen, severity, reaction FROM allergies WHERE patient_id = ? ORDER BY allergen', static fn($r) => $r['allergen'] . ' | Severity: ' . $r['severity'] . ' | Reaction: ' . ($r['reaction'] ?? '-')],
         'Chronic conditions' => ['SELECT condition_name, diagnosed_date, notes, is_active FROM chronic_conditions WHERE patient_id = ? ORDER BY condition_name', static fn($r) => $r['condition_name'] . ' | Diagnosed: ' . ($r['diagnosed_date'] ?? '-') . ' | Notes: ' . ($r['notes'] ?? '-')],
     ];
+    if ($includeNotes) {
+        $queries['Doctor notes'] = ['SELECT hr.title, hr.content, hr.created_at, u.full_name AS doctor_name FROM health_records hr LEFT JOIN doctors d ON d.doctor_id = hr.doctor_id LEFT JOIN users u ON u.user_id = d.user_id WHERE hr.patient_id = ? ORDER BY hr.created_at DESC', static fn($r) => 'Title: ' . $r['title'] . ' | Date: ' . $r['created_at'] . ' | Doctor: ' . ($r['doctor_name'] ?? '-') . ' | Note: ' . $r['content']];
+    }
 
     $body = medical_docx_paragraph('Telemed ZM Medical History', true);
     $body .= medical_docx_paragraph('Generated ' . date('d F Y H:i') . '. This is the current medical history held by Telemed ZM.');

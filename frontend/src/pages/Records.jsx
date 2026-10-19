@@ -33,7 +33,7 @@ export default function Records() {
         <div className="medical-record-page">
             <PageHeader
                 title="My medical record"
-                lead="Everything stored about you on this platform — consultations, prescriptions, doctor notes, allergies, chronic conditions."
+                lead="Your consultations, prescriptions, referrals, allergies, and chronic conditions in one place."
                 actions={
                     <button className="btn-secondary btn-sm" onClick={() => downloadMedicalHistory()}>
                         <DownloadIcon size={16} /> Download full history
@@ -134,7 +134,7 @@ export default function Records() {
                         <h3 style={{ color: 'var(--primary-dark)', display: 'flex', alignItems: 'center', gap: 8 }}>
                             <DownloadIcon size={18} /> Export
                         </h3>
-                        <p className="small">Download a Word document containing your complete medical history, including profile, consultations, prescriptions, referrals, notes, allergies and chronic conditions.</p>
+                        <p className="small">Download a Word document containing your profile, consultations, prescriptions, referrals, allergies, and chronic conditions.</p>
                         <button className="btn-secondary btn-sm" onClick={() => downloadMedicalHistory()}>
                             <DownloadIcon size={16} /> Download full history
                         </button>

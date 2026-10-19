@@ -3,7 +3,6 @@ import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { API } from '../api/client.js';
 import { useAuth } from '../hooks/useAuth.jsx';
-import { useToast } from '../hooks/useToast.jsx';
 import PageHeader from '../components/PageHeader.jsx';
 import KpiCard from '../components/KpiCard.jsx';
 import Card from '../components/Card.jsx';
@@ -54,9 +53,7 @@ function routeForKpi(role, label) {
 
 export default function Overview() {
     const { user } = useAuth();
-    const toast = useToast();
     const [stats, setStats] = useState(null);
-    const [requestingRecord, setRequestingRecord] = useState(false);
 
     useEffect(() => {
         API.get('/stats').then(setStats).catch(() => {});
@@ -64,33 +61,18 @@ export default function Overview() {
 
     if (!stats || !user) return null;
 
-    async function requestMedicalRecord() {
-        setRequestingRecord(true);
-        try {
-            const result = await API.post('/records/request');
-            toast(result.message, 'success');
-        } catch (error) {
-            toast(error.message || 'Could not send the request', 'error');
-        } finally {
-            setRequestingRecord(false);
-        }
-    }
-
     const QuickActions = {
         patient: (
             <>
                 <Link to="/consultation-new" className="btn">+ New consultation</Link>
                 <Link to="/prescriptions" className="btn-ghost">View prescriptions</Link>
-                <button className="btn-ghost" onClick={requestMedicalRecord} disabled={requestingRecord}>
-                    {requestingRecord ? 'Sending request...' : 'Request medical record'}
-                </button>
+                <Link to="/records" className="btn-ghost">My medical record</Link>
             </>
         ),
         doctor: (
             <>
                 <Link to="/queue" className="btn">Open patient queue</Link>
                 <Link to="/consultations" className="btn-ghost">My consultations</Link>
-                <Link to="/audit" className="btn-ghost">Audit log</Link>
             </>
         ),
         pharmacist: (

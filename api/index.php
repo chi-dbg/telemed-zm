@@ -69,7 +69,6 @@ $routes = [
     ['GET',  '#^/records/export$#',          'routes/records.php',        'rec_export'],
     ['GET',  '#^/records$#',                 'routes/records.php',        'rec_list'],
     ['POST', '#^/records$#',                 'routes/records.php',        'rec_create'],
-    ['POST', '#^/records/request$#',         'routes/records.php',        'rec_request_copy'],
 
     // Notifications
     ['GET',  '#^/notifications$#',           'routes/notifications.php',  'notif_list'],

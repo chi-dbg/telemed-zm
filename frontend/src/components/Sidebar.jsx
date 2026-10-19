@@ -3,7 +3,7 @@ import { motion } from 'framer-motion';
 import { sidebarVariants, navListVariants, navItemVariants, activeNavBounce } from '../lib/animations.js';
 import { useAuth } from '../hooks/useAuth.jsx';
 import {
-    BrandIcon, HomeIcon, PlusCircleIcon, MessageIcon, PillIcon,
+    BrandIcon, HomeIcon, PlusCircleIcon, MessageIcon, ClipboardIcon, PillIcon,
     RefreshIcon, ActivityIcon, HospitalIcon, BellIcon, UserIcon, BookIcon,
     ClockIcon, UsersIcon, SearchIcon, InboxIcon, CheckCircleIcon, LogoutIcon,
 } from './Icons.jsx';
@@ -23,7 +23,8 @@ const NAV_BY_ROLE = {
         { section: 'Account' },
         { key: 'notifications',label: 'Notifications',     Icon: BellIcon,        to: '/notifications' },
         { key: 'profile',      label: 'Profile & settings',Icon: UserIcon,        to: '/profile' },
-        { key: 'help',         label: 'Help & research',   Icon: BookIcon,        to: '/help' },
+        { key: 'records',      label: 'Medical record',    Icon: ClipboardIcon,   to: '/records' },
+        { key: 'help',         label: 'FAQs',              Icon: BookIcon,        to: '/help' },
     ],
     doctor: [
         { section: 'Clinical' },
@@ -34,12 +35,11 @@ const NAV_BY_ROLE = {
         { section: 'Records' },
         { key: 'prescriptions',label: 'Prescriptions',     Icon: PillIcon,        to: '/prescriptions' },
         { key: 'referrals',    label: 'Referrals',         Icon: HospitalIcon,    to: '/referrals' },
-        { key: 'audit',        label: 'Audit log',         Icon: SearchIcon,      to: '/audit' },
         { key: 'refills',      label: 'Refill requests',   Icon: RefreshIcon,     to: '/refills' },
         { section: 'Account' },
         { key: 'notifications',label: 'Notifications',     Icon: BellIcon,        to: '/notifications' },
         { key: 'profile',      label: 'Profile & settings',Icon: UserIcon,        to: '/profile' },
-        { key: 'help',         label: 'Help & research',   Icon: BookIcon,        to: '/help' },
+        { key: 'help',         label: 'FAQs',              Icon: BookIcon,        to: '/help' },
     ],
     pharmacist: [
         { section: 'Pharmacy' },
@@ -51,7 +51,16 @@ const NAV_BY_ROLE = {
         { section: 'Account' },
         { key: 'notifications',label: 'Notifications',     Icon: BellIcon,        to: '/notifications' },
         { key: 'profile',      label: 'Profile & settings',Icon: UserIcon,        to: '/profile' },
-        { key: 'help',         label: 'Help & research',   Icon: BookIcon,        to: '/help' },
+        { key: 'help',         label: 'FAQs',              Icon: BookIcon,        to: '/help' },
+    ],
+    admin: [
+        { section: 'Administration' },
+        { key: 'overview',     label: 'Dashboard',         Icon: HomeIcon,        to: '/admin' },
+        { key: 'hospitals',    label: 'Hospitals',         Icon: HospitalIcon,    to: '/admin/hospitals' },
+        { key: 'audit',        label: 'Audit log',         Icon: SearchIcon,      to: '/audit' },
+        { section: 'Account' },
+        { key: 'profile',      label: 'Profile & settings',Icon: UserIcon,        to: '/profile' },
+        { key: 'help',         label: 'FAQs',              Icon: BookIcon,        to: '/help' },
     ],
 };
 
