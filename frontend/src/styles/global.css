@@ -2955,7 +2955,7 @@ footer.landing-footer {
 .app.role-pharmacist::before {
     background: url('../assets/doc-pages.jpg') center / cover no-repeat;
     opacity: 1;
-    filter: contrast(1.08) saturate(1.06) brightness(1.02);
+    filter: contrast(1.05) saturate(.92) brightness(.56);
     transform: none;
 }
 
