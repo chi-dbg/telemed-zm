@@ -2279,7 +2279,7 @@ footer.landing-footer {
     isolation: isolate;
     background:
         linear-gradient(135deg, rgba(238, 255, 229, .70), rgba(255, 255, 255, .58) 46%, rgba(186, 240, 141, .34)),
-        url('../assets/doc-pages.jpg') center / cover no-repeat;
+        url('../assets/medical-background.png') center / cover no-repeat;
 }
 
 .app.role-patient::before,
@@ -2404,7 +2404,7 @@ footer.landing-footer {
 .app.role-patient,
 .app.role-doctor,
 .app.role-pharmacist {
-    background: url('../assets/doc-pages.jpg') center / cover no-repeat;
+    background: url('../assets/medical-background.png') center / cover no-repeat;
 }
 
 .app.role-patient::before,
@@ -2519,7 +2519,7 @@ footer.landing-footer {
 .app.role-patient::before,
 .app.role-doctor::before,
 .app.role-pharmacist::before {
-    background: url('../assets/doc-pages.jpg') center / cover no-repeat;
+    background: url('../assets/medical-background.png') center / cover no-repeat;
     opacity: 1;
     filter: contrast(1.14) saturate(1.10) brightness(1.03);
     transform: scale(1.015);
@@ -2953,10 +2953,10 @@ footer.landing-footer {
 .app.role-patient::before,
 .app.role-doctor::before,
 .app.role-pharmacist::before {
-    background: url('../assets/doc-pages.jpg') center / cover no-repeat;
+    background: url('../assets/medical-background.png') center / cover no-repeat;
     opacity: 1;
-    filter: contrast(1.05) saturate(.92) brightness(.56);
-    transform: none;
+    filter: contrast(1.05) saturate(.92) brightness(.56) blur(3px);
+    transform: scale(1.02);
 }
 
 @media (max-width: 1180px) {
