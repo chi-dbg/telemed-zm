@@ -6,6 +6,7 @@ import { useToast } from '../hooks/useToast.jsx';
 import PageHeader from '../components/PageHeader.jsx';
 import Card from '../components/Card.jsx';
 import { triageResultVariants, symptomSelectVariants, staggerContainer, staggerItem } from '../lib/animations.js';
+import { MessageIcon, VideoIcon } from '../components/Icons.jsx';
 
 const RED_FLAGS = [
     ['chest_pain', 'Chest pain', 'high'],
@@ -40,16 +41,14 @@ export default function ConsultationNew() {
     const [selected, setSelected] = useState(new Set());
     const [duration, setDuration] = useState(2);
     const [severity, setSeverity] = useState('mild');
+    const [communicationMode, setCommunicationMode] = useState('chat');
     const [freeText, setFreeText] = useState('');
     const [triage, setTriage] = useState(null);
-
-    console.log('[ConsultationNew] render selected:', Array.from(selected));
 
     function toggle(key) {
         setSelected(s => {
             const next = new Set(s);
             if (next.has(key)) next.delete(key); else next.add(key);
-            console.log('[ConsultationNew] toggle', key, 'selectedCount:', next.size);
             return next;
         });
     }
@@ -95,6 +94,7 @@ export default function ConsultationNew() {
                 symptoms: blob,
                 triage_score: t?.score ?? 0,
                 triage_recommendation: t?.recommendation ?? 'routine',
+            communication_mode: communicationMode,
             });
             toast('Consultation submitted. A doctor will be assigned shortly.', 'success');
             setTimeout(() => navigate('/consultations'), 600);
@@ -134,6 +134,38 @@ export default function ConsultationNew() {
                 </div>
 
                 <div className="field">
+                    <label>Preferred consultation type</label>
+                    <div className="consultation-mode-choice" role="radiogroup" aria-label="Preferred consultation type">
+                        <button
+                            type="button"
+                            role="radio"
+                            aria-checked={communicationMode === 'chat'}
+                            className={communicationMode === 'chat' ? 'selected' : ''}
+                            onClick={() => setCommunicationMode('chat')}
+                        >
+                            <span className="consultation-mode-icon"><MessageIcon size={24} /></span>
+                            <span>
+                                <strong>Chat consultation</strong>
+                                <small>Message a doctor in the platform</small>
+                            </span>
+                        </button>
+                        <button
+                            type="button"
+                            role="radio"
+                            aria-checked={communicationMode === 'video'}
+                            className={communicationMode === 'video' ? 'selected' : ''}
+                            onClick={() => setCommunicationMode('video')}
+                        >
+                            <span className="consultation-mode-icon"><VideoIcon size={24} /></span>
+                            <span>
+                                <strong>Video consultation</strong>
+                                <small>Talk by camera and microphone</small>
+                            </span>
+                        </button>
+                    </div>
+                </div>
+
+                <div className="field">
                     <label>Select all symptoms that apply</label>
                     <motion.div className="symptom-grid" variants={staggerContainer} initial="initial" animate="animate">
                         {RED_FLAGS.map(([key, label, sev]) => (
@@ -143,18 +175,12 @@ export default function ConsultationNew() {
                                 variants={staggerItem}
                                 animate={selected.has(key) ? symptomSelectVariants.selected : undefined}
                                 onClick={() => toggle(key)}
-                                onMouseDown={() => console.log('[ConsultationNew] mousedown', key)}
-                                onDoubleClick={() => console.log('[ConsultationNew] dblclick', key)}
                             >
                                 <span className="sev-dot" />
                                 {label}
                             </motion.div>
                         ))}
                     </motion.div>
-                </div>
-
-                <div style={{ position: 'fixed', right: 18, top: 80, background: 'rgba(0,0,0,.6)', color: 'white', padding: '6px 8px', borderRadius: 6, zIndex: 1200, fontSize: '.85rem' }}>
-                    Selected: {selected.size}
                 </div>
 
                 <div className="field">

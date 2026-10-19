@@ -3,7 +3,7 @@ import { motion } from 'framer-motion';
 import { sidebarVariants, navListVariants, navItemVariants, activeNavBounce } from '../lib/animations.js';
 import { useAuth } from '../hooks/useAuth.jsx';
 import {
-    BrandIcon, HomeIcon, PlusCircleIcon, MessageIcon, ClipboardIcon, PillIcon,
+    BrandIcon, HomeIcon, PlusCircleIcon, MessageIcon, PillIcon,
     RefreshIcon, ActivityIcon, HospitalIcon, BellIcon, UserIcon, BookIcon,
     ClockIcon, UsersIcon, SearchIcon, InboxIcon, CheckCircleIcon, LogoutIcon,
 } from './Icons.jsx';
@@ -14,7 +14,6 @@ const NAV_BY_ROLE = {
         { key: 'overview',     label: 'Overview',          Icon: HomeIcon,        to: '/overview' },
         { key: 'consult-new',  label: 'New consultation',  Icon: PlusCircleIcon,  to: '/consultation-new' },
         { key: 'consultations',label: 'My consultations',  Icon: MessageIcon,     to: '/consultations' },
-        { key: 'records',      label: 'Medical record',    Icon: ClipboardIcon,   to: '/records' },
         { section: 'Medications' },
         { key: 'prescriptions',label: 'Prescriptions',     Icon: PillIcon,        to: '/prescriptions' },
         { key: 'refills',      label: 'Refill requests',   Icon: RefreshIcon,     to: '/refills' },

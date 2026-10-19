@@ -17,7 +17,6 @@ import Prescriptions from './pages/Prescriptions.jsx';
 import Incoming from './pages/Incoming.jsx';
 import Dispensed from './pages/Dispensed.jsx';
 import Referrals from './pages/Referrals.jsx';
-import Records from './pages/Records.jsx';
 import Allergies from './pages/Allergies.jsx';
 import Refills from './pages/Refills.jsx';
 import Notifications from './pages/Notifications.jsx';
@@ -83,10 +82,6 @@ export default function App() {
 
                     <Route element={<Layout title="Referrals" />}>
                         <Route path="/referrals" element={<Referrals />} />
-                    </Route>
-
-                    <Route element={<Layout title="Medical record" allowedRoles={['patient']} />}>
-                        <Route path="/records" element={<Records />} />
                     </Route>
 
                     <Route element={<Layout title="Allergies & conditions" allowedRoles={['patient']} />}>
