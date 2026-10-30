@@ -15,7 +15,7 @@ const keyPath = resolve(__dirname, '../certs/telemed-dev-key.pem');
 const devHttps = process.env.VITE_DEV_HTTPS === '1' && existsSync(certPath) && existsSync(keyPath)
     ? { cert: readFileSync(certPath), key: readFileSync(keyPath) }
     : undefined;
-const chatPort = Number(process.env.CHAT_PORT || '3001');
+const chatPort = Number(process.env.CHAT_PORT || '4310');
 const autoChatServer = process.env.VITE_AUTO_CHAT_SERVER !== '0';
 
 function portIsOpen(port, host = '127.0.0.1', timeoutMs = 700) {
@@ -160,6 +160,7 @@ export default defineConfig({
         host: '0.0.0.0',
         port: 5173,
         https: devHttps,
+        allowedHosts: ['.trycloudflare.com'],
         proxy: {
             '/telemed-platform/api': {
                 target: 'http://localhost',

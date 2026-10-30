@@ -1,6 +1,6 @@
 <?php
 /**
- * Administrator routes: platform-wide usage, approvals, and user controls.
+ * Administrator routes: platform-wide usage and user access controls.
  */
 
 require_once __DIR__ . '/../helpers.php';
@@ -69,6 +69,7 @@ function admin_overview(): void
 {
     require_auth(['admin']);
     $pdo = DB::conn();
+    $isMySql = DB::driver() === 'mysql';
 
     $hospitalCount = admin_count(
         $pdo,
@@ -88,7 +89,6 @@ function admin_overview(): void
         'account_summary' => [
             'total_users' => admin_count($pdo, 'SELECT COUNT(*) FROM users'),
             'active_users' => admin_count($pdo, "SELECT COUNT(*) FROM users WHERE is_active = 1 AND account_status = 'approved'"),
-            'pending_users' => admin_count($pdo, "SELECT COUNT(*) FROM users WHERE account_status = 'pending'"),
             'blocked_users' => admin_count($pdo, "SELECT COUNT(*) FROM users WHERE account_status = 'blocked'"),
             'rejected_users' => admin_count($pdo, "SELECT COUNT(*) FROM users WHERE account_status = 'rejected'"),
         ],
@@ -96,7 +96,7 @@ function admin_overview(): void
             'clinical' => [
                 ['label' => 'Total consultations', 'value' => admin_count($pdo, 'SELECT COUNT(*) FROM consultations')],
                 ['label' => 'Active consultations', 'value' => admin_count($pdo, "SELECT COUNT(*) FROM consultations WHERE status IN ('queued', 'assigned', 'in_progress')")],
-                ['label' => 'Consultations today', 'value' => admin_count($pdo, 'SELECT COUNT(*) FROM consultations WHERE requested_at::date = CURRENT_DATE')],
+                ['label' => 'Consultations today', 'value' => admin_count($pdo, $isMySql ? 'SELECT COUNT(*) FROM consultations WHERE DATE(requested_at) = CURDATE()' : 'SELECT COUNT(*) FROM consultations WHERE requested_at::date = CURRENT_DATE')],
                 ['label' => 'Upcoming referrals', 'value' => admin_count($pdo, "SELECT COUNT(*) FROM referrals WHERE status = 'scheduled' AND appointment_date >= CURRENT_DATE")],
             ],
             'pharmacy' => [
@@ -108,29 +108,35 @@ function admin_overview(): void
             'system' => [
                 ['label' => 'Chat messages', 'value' => admin_count($pdo, 'SELECT COUNT(*) FROM chat_messages')],
                 ['label' => 'Audit events', 'value' => admin_count($pdo, 'SELECT COUNT(*) FROM audit_log')],
-                ['label' => 'Audit events in 7 days', 'value' => admin_count($pdo, "SELECT COUNT(*) FROM audit_log WHERE created_at >= NOW() - INTERVAL '7 days'")],
+                ['label' => 'Audit events in 7 days', 'value' => admin_count($pdo, $isMySql ? 'SELECT COUNT(*) FROM audit_log WHERE created_at >= DATE_SUB(NOW(), INTERVAL 7 DAY)' : "SELECT COUNT(*) FROM audit_log WHERE created_at >= NOW() - INTERVAL '7 days'")],
                 ['label' => 'Unread notifications', 'value' => admin_count($pdo, 'SELECT COUNT(*) FROM notifications WHERE is_read = 0')],
             ],
         ],
-        'pending_users' => admin_fetch_users($pdo, ["u.account_status = 'pending'"], [], 8),
         'recent_users' => admin_fetch_users($pdo, [], [], 8),
         'role_breakdown' => [],
         'recent_activity' => [],
     ];
 
-    $stmt = $pdo->query(
-        "SELECT role,
+    $roleBreakdownSql = $isMySql
+        ? "SELECT role,
+                COUNT(*) AS total,
+                SUM(is_active = 1 AND account_status = 'approved') AS active,
+                SUM(account_status = 'blocked') AS blocked,
+                SUM(account_status = 'rejected') AS rejected
+           FROM users
+           GROUP BY role
+           ORDER BY FIELD(role, 'admin', 'doctor', 'pharmacist', 'patient')"
+        : "SELECT role,
                 COUNT(*) AS total,
                 COUNT(*) FILTER (WHERE is_active = 1 AND account_status = 'approved') AS active,
-                COUNT(*) FILTER (WHERE account_status = 'pending') AS pending,
                 COUNT(*) FILTER (WHERE account_status = 'blocked') AS blocked,
                 COUNT(*) FILTER (WHERE account_status = 'rejected') AS rejected
          FROM users
          GROUP BY role
          ORDER BY CASE role
                   WHEN 'admin' THEN 1 WHEN 'doctor' THEN 2
-                  WHEN 'pharmacist' THEN 3 WHEN 'patient' THEN 4 ELSE 5 END"
-    );
+                  WHEN 'pharmacist' THEN 3 WHEN 'patient' THEN 4 ELSE 5 END";
+    $stmt = $pdo->query($roleBreakdownSql);
     $payload['role_breakdown'] = $stmt->fetchAll();
 
     $stmt = $pdo->query(
@@ -149,8 +155,19 @@ function admin_overview(): void
 function admin_hospitals(): void
 {
     require_auth(['admin']);
-    $stmt = DB::conn()->query(
-        "SELECT
+    $sql = DB::driver() === 'mysql'
+        ? "SELECT
+            TRIM(d.affiliated_institution) AS name,
+            COUNT(*) AS doctor_count,
+            GROUP_CONCAT(DISTINCT NULLIF(TRIM(d.specialisation), '') ORDER BY d.specialisation SEPARATOR ', ') AS specialisations
+         FROM doctors d
+         JOIN users u ON u.user_id = d.user_id
+         WHERE u.account_status = 'approved'
+           AND u.is_active = 1
+           AND NULLIF(TRIM(COALESCE(d.affiliated_institution, '')), '') IS NOT NULL
+         GROUP BY TRIM(d.affiliated_institution)
+         ORDER BY name ASC"
+        : "SELECT
             TRIM(d.affiliated_institution) AS name,
             COUNT(*) AS doctor_count,
             STRING_AGG(DISTINCT NULLIF(TRIM(d.specialisation), ''), ', ' ORDER BY NULLIF(TRIM(d.specialisation), '')) AS specialisations
@@ -160,8 +177,8 @@ function admin_hospitals(): void
            AND u.is_active = 1
            AND NULLIF(TRIM(COALESCE(d.affiliated_institution, '')), '') IS NOT NULL
          GROUP BY TRIM(d.affiliated_institution)
-         ORDER BY name ASC"
-    );
+         ORDER BY name ASC";
+    $stmt = DB::conn()->query($sql);
 
     send_json(['hospitals' => $stmt->fetchAll()]);
 }
@@ -197,14 +214,10 @@ function admin_status_from_action(string $value): string
 {
     $value = strtolower(trim($value));
     $map = [
-        'approve' => 'approved',
         'approved' => 'approved',
         'restore' => 'approved',
-        'reject' => 'rejected',
-        'rejected' => 'rejected',
         'block' => 'blocked',
         'blocked' => 'blocked',
-        'pending' => 'pending',
     ];
 
     if (!isset($map[$value])) {
@@ -256,10 +269,8 @@ function admin_update_user_status(string $id): void
     audit_log($adminId, 'admin', 'user.status_updated', 'user', $targetId, $detail);
 
     $messages = [
-        'approved' => ['Account approved', 'Your Telemed ZM account has been approved. You can now sign in.'],
-        'rejected' => ['Account rejected', 'Your Telemed ZM registration was reviewed and rejected.'],
+        'approved' => ['Account access restored', 'Your Telemed ZM account access has been restored. You can now sign in.'],
         'blocked' => ['Account blocked', 'Your Telemed ZM account has been blocked by an administrator.'],
-        'pending' => ['Account pending review', 'Your Telemed ZM account is awaiting administrator review.'],
     ];
     [$title, $message] = $messages[$status];
     notify($targetId, $title, $message, 'system', $targetId);

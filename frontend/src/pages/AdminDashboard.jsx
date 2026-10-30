@@ -11,9 +11,7 @@ import Pill from '../components/Pill.jsx';
 import { fmtDateTime, safe, truncate } from '../lib/helpers.js';
 import { staggerContainer, staggerItem } from '../lib/animations.js';
 import {
-    AlertIcon,
     CheckCircleIcon,
-    ClockIcon,
     HospitalIcon,
     LockIcon,
     PillIcon,
@@ -24,16 +22,15 @@ import {
 } from '../components/Icons.jsx';
 
 const TABS = [
-    { key: 'approvals', label: 'Approvals' },
     { key: 'users', label: 'Users' },
     { key: 'usage', label: 'Usage' },
     { key: 'audit', label: 'Audit' },
 ];
 
-const STATUS_FILTERS = ['all', 'pending', 'approved', 'blocked', 'rejected'];
+const STATUS_FILTERS = ['all', 'approved', 'blocked', 'pending', 'rejected'];
 const ROLE_FILTERS = ['all', 'patient', 'doctor', 'pharmacist', 'admin'];
 function tabFrom(value) {
-    return TABS.some(tab => tab.key === value) ? value : 'approvals';
+    return TABS.some(tab => tab.key === value) ? value : 'users';
 }
 
 function statusFrom(value) {
@@ -84,28 +81,17 @@ function StatusPill({ status }) {
 
 function UserActions({ user, actioning, onStatus }) {
     const disabled = Boolean(actioning);
-    const isPending = user.account_status === 'pending';
     const isApproved = user.account_status === 'approved';
 
     return (
         <div className="admin-action-row">
-            {isPending && (
-                <>
-                    <button type="button" className="btn-success btn-sm" disabled={disabled} onClick={() => onStatus(user, 'approved')}>
-                        <CheckCircleIcon size={15} /> Approve
-                    </button>
-                    <button type="button" className="btn-danger btn-sm" disabled={disabled} onClick={() => onStatus(user, 'rejected')}>
-                        <AlertIcon size={15} /> Reject
-                    </button>
-                </>
-            )}
             {isApproved ? (
                 <button type="button" className="btn-warn btn-sm" disabled={disabled} onClick={() => onStatus(user, 'blocked')}>
                     <LockIcon size={15} /> Block
                 </button>
             ) : (
                 <button type="button" className="btn-secondary btn-sm" disabled={disabled} onClick={() => onStatus(user, 'approved')}>
-                    <RefreshIcon size={15} /> Restore
+                    <RefreshIcon size={15} /> Restore access
                 </button>
             )}
         </div>
@@ -250,7 +236,6 @@ export default function AdminDashboard() {
             .finally(() => setLoading(false));
     }, [statusFilter, roleFilter]);
 
-    const pendingUsers = overview?.pending_users || [];
     const accountSummary = overview?.account_summary || {};
     const usage = overview?.usage || { clinical: [], pharmacy: [], system: [] };
     const roleBreakdown = overview?.role_breakdown || [];
@@ -289,7 +274,7 @@ export default function AdminDashboard() {
         <>
             <PageHeader
                 title="Administrator dashboard"
-                lead="Review registrations, manage users, and monitor platform-wide clinical and pharmacy usage."
+                lead="Manage user access and monitor platform-wide clinical and pharmacy usage. New registrations are approved automatically."
                 actions={
                     <button type="button" className="btn-secondary" onClick={() => { loadOverview(); loadUsers(); }}>
                         <RefreshIcon size={16} /> Refresh
@@ -306,7 +291,6 @@ export default function AdminDashboard() {
             <div className="admin-summary-grid responsive-summary-grid">
                 <MiniMetric icon={UsersIcon} label="total users" value={accountSummary.total_users} />
                 <MiniMetric icon={CheckCircleIcon} label="active users" value={accountSummary.active_users} tone="success" />
-                <MiniMetric icon={ClockIcon} label="pending approval" value={accountSummary.pending_users} tone="warn" />
                 <MiniMetric icon={LockIcon} label="blocked users" value={accountSummary.blocked_users} tone="danger" />
             </div>
 
@@ -322,24 +306,6 @@ export default function AdminDashboard() {
                     </button>
                 ))}
             </div>
-
-            {activeTab === 'approvals' && (
-                <motion.div variants={staggerItem} initial="initial" animate="animate">
-                    <Card hover={false}>
-                        <div className="card-title-row">
-                            <h2>New sign-ins awaiting approval</h2>
-                            <span className="tag primary">{pendingUsers.length} pending</span>
-                        </div>
-                        <UserTable
-                            users={pendingUsers}
-                            actioning={actioning}
-                            onStatus={updateUserStatus}
-                            emptyTitle="No pending registrations"
-                            emptyMessage="New patient, doctor, and pharmacy registrations will appear here for approval."
-                        />
-                    </Card>
-                </motion.div>
-            )}
 
             {activeTab === 'users' && (
                 <motion.div variants={staggerItem} initial="initial" animate="animate">
@@ -381,14 +347,13 @@ export default function AdminDashboard() {
                         <h3><UsersIcon size={18} /> Role breakdown</h3>
                         <div className="table-wrap compact-table">
                             <table>
-                                <thead><tr><th>Role</th><th>Total</th><th>Active</th><th>Pending</th><th>Blocked</th></tr></thead>
+                                <thead><tr><th>Role</th><th>Total</th><th>Active</th><th>Blocked</th></tr></thead>
                                 <tbody>
                                     {roleBreakdown.map(row => (
                                         <tr key={row.role}>
                                             <td>{human(row.role)}</td>
                                             <td>{numberValue(row.total)}</td>
                                             <td>{numberValue(row.active)}</td>
-                                            <td>{numberValue(row.pending)}</td>
                                             <td>{numberValue(row.blocked)}</td>
                                         </tr>
                                     ))}

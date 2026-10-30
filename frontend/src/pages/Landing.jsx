@@ -11,6 +11,7 @@ import {
     BrandIcon, MessageIcon, PillIcon, ActivityIcon, HospitalIcon,
     ClipboardIcon, ShieldIcon,
 } from '../components/Icons.jsx';
+import SiteFooter from '../components/SiteFooter.jsx';
 
 const FEATURES = [
     { Icon: MessageIcon,   title: 'Remote consultations',     body: 'Patients submit symptoms and chat with a licensed doctor in real time — no travel for routine care.' },
@@ -253,9 +254,7 @@ export default function Landing() {
                 </div>
             </section>
 
-            <footer className="landing-footer">
-             call us on 0777159404 / 0765272070. Email: telemed@zm.org. / visit us on telemedzm.com ©2026.
-            </footer>
+            <SiteFooter />
         </>
     );
 }

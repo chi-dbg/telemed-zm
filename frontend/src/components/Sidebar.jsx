@@ -125,9 +125,9 @@ export default function Sidebar({ unreadNotifications = 0, isOpen, onClose }) {
 
             <div className="sidebar-footer">
                 <div style={{ color: 'rgba(255,255,255,.7)', fontWeight: 600 }}>
-                    Telemed ZM Prototype
+                    Telemed ZM 
                 </div>
-                Aligned with HPCZ Guidelines &amp; SI 43 of 2023
+                Aligned with HPCZ Guidelines 
             </div>
         </motion.aside>
     );

@@ -9,19 +9,21 @@ class DB
 {
     private static ?PDO $pdo = null;
 
+    public static function driver(): string
+    {
+        $config = require __DIR__ . '/config.php';
+        return $config['db']['driver'];
+    }
+
     public static function conn(): PDO
     {
         if (self::$pdo === null) {
             $config = require __DIR__ . '/config.php';
             $c = $config['db'];
 
-            $dsn = sprintf(
-                'pgsql:host=%s;port=%s;dbname=%s;sslmode=%s',
-                $c['host'],
-                $c['port'],
-                $c['name'],
-                $c['sslmode']
-            );
+            $dsn = $c['driver'] === 'mysql'
+                ? sprintf('mysql:host=%s;port=%s;dbname=%s;charset=%s', $c['host'], $c['port'], $c['name'], $c['charset'])
+                : sprintf('pgsql:host=%s;port=%s;dbname=%s;sslmode=%s', $c['host'], $c['port'], $c['name'], $c['sslmode']);
 
             try {
                 self::$pdo = new PDO($dsn, $c['user'], $c['password'], [

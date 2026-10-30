@@ -275,3 +275,18 @@ CREATE TABLE drugs (
     notes TEXT,
     INDEX idx_name (name)
 ) ENGINE=InnoDB;
+
+-- ---------------------------------------------------------------------
+-- Table 16: password_reset_tokens (short-lived account recovery tokens)
+-- ---------------------------------------------------------------------
+CREATE TABLE password_reset_tokens (
+    reset_id INT AUTO_INCREMENT PRIMARY KEY,
+    user_id INT NOT NULL,
+    token_hash CHAR(64) NOT NULL UNIQUE,
+    expires_at DATETIME NOT NULL,
+    used_at DATETIME NULL,
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE,
+    INDEX idx_reset_user (user_id),
+    INDEX idx_reset_expiry (expires_at)
+) ENGINE=InnoDB;

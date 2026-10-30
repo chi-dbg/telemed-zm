@@ -11,9 +11,12 @@ export function AuthProvider({ children }) {
     const refresh = useCallback(async () => {
         try {
             const r = await API.me();
-            setUser(r.user);
-            console.log('[Auth] refresh -> user:', r.user);
-            return r.user;
+            // Login returns `id`, while the legacy session endpoint returns
+            // `user_id`. Keep one stable shape for ownership checks such as chat.
+            const user = { ...r.user, id: r.user?.id ?? r.user?.user_id };
+            setUser(user);
+            console.log('[Auth] refresh -> user:', user);
+            return user;
         } catch (_) {
             setUser(null);
             console.log('[Auth] refresh -> user cleared');

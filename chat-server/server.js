@@ -22,24 +22,37 @@ const cors = require('cors');
 const { Server } = require('socket.io');
 const crypto = require('crypto');
 const os = require('os');
-const { Pool } = require('pg');
+const fs = require('fs');
+const path = require('path');
+
+// Match the PHP API's local .env behaviour without adding a dotenv dependency.
+const localEnvPath = path.resolve(__dirname, '..', '.env');
+if (fs.existsSync(localEnvPath)) {
+    for (const rawLine of fs.readFileSync(localEnvPath, 'utf8').split(/\r?\n/)) {
+        const line = rawLine.trim();
+        if (!line || line.startsWith('#') || !line.includes('=')) continue;
+        const [key, ...rest] = line.split('=');
+        if (!(key in process.env)) process.env[key.trim()] = rest.join('=').trim().replace(/^['"]|['"]$/g, '');
+    }
+}
 
 // -----------------------------------------------------------------------
 // Configuration (must match the PHP api/config.php values)
 // -----------------------------------------------------------------------
-const PORT       = Number(process.env.PORT || process.env.CHAT_PORT || 3001);
+const PORT       = Number(process.env.PORT || process.env.CHAT_PORT || 4310);
 const HOST       = process.env.CHAT_HOST || '0.0.0.0';
+const DB_DRIVER  = process.env.DB_DRIVER || (process.env.APP_ENV === 'production' ? 'pgsql' : 'mysql');
 const JWT_SECRET = process.env.JWT_SECRET || '';
 if (process.env.APP_ENV === 'production' && !JWT_SECRET) {
     throw new Error('JWT_SECRET must be configured in production.');
 }
 const TOKEN_SECRET = JWT_SECRET || 'change-me-to-a-long-random-string-in-production-please-do-it';
 const DB_CONFIG  = {
-    host:     process.env.DB_HOST     || '127.0.0.1',
-    port:     Number(process.env.DB_PORT || 5432),
-    user:     process.env.DB_USER     || 'postgres',
-    password: process.env.DB_PASSWORD || '',
-    database: process.env.DB_NAME     || 'postgres',
+    host:     DB_DRIVER === 'mysql' ? (process.env.MYSQL_HOST || '127.0.0.1') : (process.env.DB_HOST || '127.0.0.1'),
+    port:     Number(DB_DRIVER === 'mysql' ? (process.env.MYSQL_PORT || 3306) : (process.env.DB_PORT || 5432)),
+    user:     DB_DRIVER === 'mysql' ? (process.env.MYSQL_USER || 'root') : (process.env.DB_USER || 'postgres'),
+    password: DB_DRIVER === 'mysql' ? (process.env.MYSQL_PASSWORD || '') : (process.env.DB_PASSWORD || ''),
+    database: DB_DRIVER === 'mysql' ? (process.env.MYSQL_DB || 'telemed_db') : (process.env.DB_NAME || 'postgres'),
     ssl:      process.env.DB_SSLMODE === 'require' ? { rejectUnauthorized: true } : false,
     max:      10,
 };
@@ -75,13 +88,28 @@ function verifyJwt(token) {
 // HTTP + Socket.IO setup
 // -----------------------------------------------------------------------
 const app = express();
-const allowedOrigins = (process.env.CORS_ALLOWED_ORIGINS || 'http://localhost:5173,http://127.0.0.1:5173')
+const localOrigins = 'http://localhost:5173,http://127.0.0.1:5173,http://localhost:5174,http://127.0.0.1:5174';
+const allowedOrigins = ((process.env.CORS_ALLOWED_ORIGINS || '') +
+    (process.env.APP_ENV === 'production' ? '' : `,${localOrigins}`))
     .split(',')
     .map(origin => origin.trim())
     .filter(Boolean);
+
+function isPrivateDevelopmentOrigin(origin) {
+    if (process.env.APP_ENV === 'production') return false;
+    try {
+        const { hostname } = new URL(origin);
+        return hostname === 'localhost' || hostname === '127.0.0.1' ||
+            /^10(?:\.\d{1,3}){3}$/.test(hostname) ||
+            /^192\.168(?:\.\d{1,3}){2}$/.test(hostname) ||
+            /^172\.(?:1[6-9]|2\d|3[0-1])(?:\.\d{1,3}){2}$/.test(hostname);
+    } catch {
+        return false;
+    }
+}
 const corsOptions = {
     origin(origin, callback) {
-        if (!origin || allowedOrigins.includes(origin)) {
+        if (!origin || allowedOrigins.includes(origin) || isPrivateDevelopmentOrigin(origin)) {
             return callback(null, true);
         }
         return callback(new Error('Origin is not allowed by CORS'));
@@ -118,23 +146,27 @@ io.use((socket, next) => {
 // -----------------------------------------------------------------------
 let pool;
 async function getPool() {
-    if (!pool) pool = new Pool(DB_CONFIG);
+    if (!pool) {
+        pool = DB_DRIVER === 'mysql'
+            ? require('mysql2/promise').createPool({ ...DB_CONFIG, waitForConnections: true, connectionLimit: 10 })
+            : new (require('pg').Pool)(DB_CONFIG);
+    }
     return pool;
 }
 
 /** Verify the user is allowed to join a consultation room. */
 async function userBelongsToConsultation(userId, consultationId) {
     const conn = await getPool();
-    const { rows } = await conn.query(
-        `SELECT c.consultation_id, c.status, pu.user_id AS pUid, du.user_id AS dUid
+    const sql = `SELECT c.consultation_id, c.status, pu.user_id AS pUid, du.user_id AS dUid
          FROM consultations c
          JOIN patients p   ON p.patient_id = c.patient_id
          JOIN users    pu  ON pu.user_id   = p.user_id
          LEFT JOIN doctors d ON d.doctor_id = c.doctor_id
          LEFT JOIN users   du ON du.user_id = d.user_id
-         WHERE c.consultation_id = $1`,
-        [consultationId]
-    );
+         WHERE c.consultation_id = ${DB_DRIVER === 'mysql' ? '?' : '$1'}`;
+    const rows = DB_DRIVER === 'mysql'
+        ? (await conn.execute(sql, [consultationId]))[0]
+        : (await conn.query(sql, [consultationId])).rows;
     if (!rows.length) return false;
     const r = rows[0];
     if (!['assigned', 'in_progress'].includes(r.status)) return false;
@@ -144,11 +176,17 @@ async function userBelongsToConsultation(userId, consultationId) {
 /** Persist a chat message so it shows up on the next page load. */
 async function persistMessage(consultationId, senderUserId, role, text) {
     const conn = await getPool();
+    const values = [consultationId, senderUserId, role, text];
+    if (DB_DRIVER === 'mysql') {
+        const [result] = await conn.execute(
+            'INSERT INTO chat_messages (consultation_id, sender_user_id, sender_role, message_text) VALUES (?, ?, ?, ?)',
+            values
+        );
+        return Number(result.insertId);
+    }
     const { rows } = await conn.query(
-        `INSERT INTO chat_messages (consultation_id, sender_user_id, sender_role, message_text)
-         VALUES ($1, $2, $3, $4)
-         RETURNING message_id`,
-        [consultationId, senderUserId, role, text]
+        'INSERT INTO chat_messages (consultation_id, sender_user_id, sender_role, message_text) VALUES ($1, $2, $3, $4) RETURNING message_id',
+        values
     );
     return Number(rows[0].message_id);
 }
@@ -171,7 +209,11 @@ io.on('connection', (socket) => {
             socket.data.room = room;
             socket.data.purpose = purpose === 'video' ? 'video' : 'chat';
             socket.emit('joined', { room, consultationId, purpose: socket.data.purpose });
-            if (socket.data.purpose !== 'video') {
+            if (socket.data.purpose === 'video') {
+                // A participant who already started media re-announces readiness
+                // when the other participant arrives, avoiding a missed first signal.
+                socket.to(room).emit('video-peer-joined', { from: { uid, role, email } });
+            } else {
                 socket.to(room).emit('peer-joined', { uid, role });
             }
         } catch (e) {

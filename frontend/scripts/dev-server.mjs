@@ -18,7 +18,7 @@ const chatServerDir = resolve(projectRoot, 'chat-server');
 const host = argValue('--host', process.env.VITE_HOST || '0.0.0.0');
 const port = Number(argValue('--port', process.env.VITE_PORT || '5173'));
 const strictPort = process.argv.includes('--strictPort') || process.env.VITE_STRICT_PORT === '1';
-const chatPort = Number(process.env.CHAT_PORT || '3001');
+const chatPort = Number(process.env.CHAT_PORT || '4310');
 const autoChatServer = process.env.VITE_AUTO_CHAT_SERVER !== '0';
 let chatProcess = null;
 let shuttingDown = false;
@@ -85,11 +85,26 @@ async function ensureChatServer() {
 
 await ensureChatServer();
 
+// This script owns the local chat process. Vite also has a development plugin
+// for direct `vite` commands, so disable that second manager here to avoid a
+// second Socket.IO process racing for the same port.
+process.env.VITE_AUTO_CHAT_SERVER = '0';
+
 const server = await createServer({
     server: {
         host,
         port,
         strictPort,
+        // Permit the temporary, browser-trusted hostname used by Cloudflare
+        // Quick Tunnels during cross-device development tests.
+        allowedHosts: ['.trycloudflare.com'],
+        proxy: {
+            '/socket.io': {
+                target: `http://127.0.0.1:${chatPort}`,
+                ws: true,
+                changeOrigin: true,
+            },
+        },
     },
 });
 

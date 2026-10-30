@@ -106,7 +106,7 @@ export default function Overview() {
 
             <div style={{ height: 12 }} />
 
-            <div className="grid split-2">
+            <div className="overview-activity-stack">
                 <Card>
                     <div className="card-title-row">
                         <h2>Recent activity</h2>
@@ -138,14 +138,12 @@ export default function Overview() {
                     )}
                 </Card>
 
-                <div>
-                    <Card style={{ background: 'var(--primary-tint)', border: '1px solid var(--primary-soft)' }}>
-                        <h3 style={{ color: 'var(--primary-dark)', display: 'flex', alignItems: 'center', gap: 8 }}>
-                            <ShieldIcon size={18} /> Your security
-                        </h3>
-                        <p className="small muted">All sessions expire after 30 minutes of inactivity. Your password is hashed with bcrypt. Every prescription event is recorded in an immutable audit log per HPCZ guidelines.</p>
-                    </Card>
-                </div>
+                <Card className="overview-security-card" style={{ background: 'var(--primary-tint)', border: '1px solid var(--primary-soft)' }}>
+                    <h3 style={{ color: 'var(--primary-dark)', display: 'flex', alignItems: 'center', gap: 8 }}>
+                        <ShieldIcon size={18} /> Secured
+                    </h3>
+                    <p className="small muted">All sessions expire after 30 minutes of inactivity. Your password is hashed with bcrypt. Every prescription event is recorded in an immutable audit log per HPCZ guidelines.</p>
+                </Card>
             </div>
         </>
     );

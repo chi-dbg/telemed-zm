@@ -40,6 +40,8 @@ $routes = [
     ['POST', '#^/auth/register$#',           'routes/auth.php',           'auth_register'],
     ['POST', '#^/auth/login$#',              'routes/auth.php',           'auth_login'],
     ['POST', '#^/auth/logout$#',             'routes/auth.php',           'auth_logout'],
+    ['POST', '#^/auth/password-reset/request$#', 'routes/auth.php',        'auth_password_reset_request'],
+    ['POST', '#^/auth/password-reset$#',     'routes/auth.php',           'auth_password_reset'],
     ['GET',  '#^/auth/me$#',                 'routes/auth.php',           'auth_me'],
 
     // Triage

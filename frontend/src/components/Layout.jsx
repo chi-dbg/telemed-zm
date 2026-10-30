@@ -3,6 +3,7 @@ import { Outlet, useLocation } from 'react-router-dom';
 import { AnimatePresence, motion } from 'framer-motion';
 import Sidebar from './Sidebar.jsx';
 import Header from './Header.jsx';
+import SiteFooter from './SiteFooter.jsx';
 import { API } from '../api/client.js';
 import { useAuth, useRequireAuth } from '../hooks/useAuth.jsx';
 import { pageVariants } from '../lib/animations.js';
@@ -42,7 +43,7 @@ export default function Layout({ title, subtitle, allowedRoles }) {
     }
 
     return (
-        <div className={`app role-${user.role}`}>
+        <div className={`app role-${user.role} ${mobileOpen ? 'menu-open' : ''}`}>
             <Sidebar
                 unreadNotifications={unread}
                 isOpen={mobileOpen}
@@ -67,6 +68,7 @@ export default function Layout({ title, subtitle, allowedRoles }) {
                         <Outlet />
                     </motion.div>
                 </AnimatePresence>
+                <SiteFooter className="app-site-footer" />
             </main>
 
             {mobileOpen && (

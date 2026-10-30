@@ -9,7 +9,7 @@
 USE telemed_db;
 
 -- bcrypt hash for "Password@123" (PHP-compatible $2y$ prefix)
-SET @pw := '$2y$10$2gcIhIK.32gStrIOlxXKWOoXEz2TLSMkdu06fJyTqbP1NutszivFO';
+SET @pw := '$2y$10$.dbZMcrrsIshzNZO3ebXO.vfE4/UOqc.mTP8BurVl8myGng1ctpku';
 
 -- USERS
 INSERT INTO users (full_name, email, password_hash, role, phone, is_active, account_status) VALUES

@@ -144,7 +144,85 @@ function notify(int $userId, string $title, string $message, string $type, ?int 
 
 function db_last_insert_id(PDO $pdo): int
 {
-    return (int) $pdo->query('SELECT LASTVAL()')->fetchColumn();
+    return DB::driver() === 'mysql'
+        ? (int) $pdo->lastInsertId()
+        : (int) $pdo->query('SELECT LASTVAL()')->fetchColumn();
+}
+
+/* ---------------------------------------------------------------------
+ * Email delivery. SMTP is used when configured; PHP mail() remains a
+ * practical fallback for XAMPP hosts configured with a local mail relay.
+ * ------------------------------------------------------------------ */
+function smtp_expect($socket, array $expected): bool
+{
+    $response = '';
+    while (($line = fgets($socket, 515)) !== false) {
+        $response .= $line;
+        if (strlen($line) >= 4 && $line[3] === ' ') break;
+    }
+    $code = (int)substr($response, 0, 3);
+    return in_array($code, $expected, true);
+}
+
+function smtp_send($socket, string $command, array $expected): bool
+{
+    fwrite($socket, $command . "\r\n");
+    return smtp_expect($socket, $expected);
+}
+
+function send_platform_email(string $to, string $subject, string $body): bool
+{
+    $config = require __DIR__ . '/config.php';
+    $mail = $config['mail'];
+    $from = str_replace(["\r", "\n"], '', $mail['from']);
+    $fromName = str_replace(["\r", "\n", '"'], '', $mail['from_name']);
+    $headers = [
+        'MIME-Version: 1.0',
+        'Content-Type: text/plain; charset=UTF-8',
+        "From: {$fromName} <{$from}>",
+        "Reply-To: {$from}",
+    ];
+
+    if ($mail['host'] === '') {
+        return @mail($to, $subject, $body, implode("\r\n", $headers));
+    }
+
+    $prefix = $mail['encryption'] === 'ssl' ? 'ssl://' : 'tcp://';
+    $socket = @stream_socket_client(
+        $prefix . $mail['host'] . ':' . $mail['port'],
+        $errno,
+        $errstr,
+        15,
+        STREAM_CLIENT_CONNECT
+    );
+    if (!$socket) {
+        error_log("Email connection failed: {$errstr} ({$errno})");
+        return false;
+    }
+
+    stream_set_timeout($socket, 15);
+    $ok = smtp_expect($socket, [220]) &&
+        smtp_send($socket, 'EHLO telemedzm.local', [250]);
+    if ($ok && $mail['encryption'] === 'tls') {
+        $ok = smtp_send($socket, 'STARTTLS', [220]) &&
+            stream_socket_enable_crypto($socket, true, STREAM_CRYPTO_METHOD_TLS_CLIENT) &&
+            smtp_send($socket, 'EHLO telemedzm.local', [250]);
+    }
+    if ($ok && $mail['username'] !== '') {
+        $ok = smtp_send($socket, 'AUTH LOGIN', [334]) &&
+            smtp_send($socket, base64_encode($mail['username']), [334]) &&
+            smtp_send($socket, base64_encode($mail['password']), [235]);
+    }
+    if ($ok) {
+        $message = implode("\r\n", $headers) . "\r\n\r\n" . $body;
+        $ok = smtp_send($socket, "MAIL FROM:<{$from}>", [250]) &&
+            smtp_send($socket, "RCPT TO:<{$to}>", [250, 251]) &&
+            smtp_send($socket, 'DATA', [354]) &&
+            smtp_send($socket, $message . "\r\n.", [250]);
+    }
+    @smtp_send($socket, 'QUIT', [221]);
+    fclose($socket);
+    return $ok;
 }
 
 /**

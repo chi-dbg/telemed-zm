@@ -107,11 +107,11 @@ export default function ConsultationNew() {
         <>
             <PageHeader
                 title="Tell us what's happening"
-                lead="The platform runs a quick triage check — red-flag symptoms get routed to the safest pathway."
+                className="consultation-new-heading"
             />
 
             <div className="banner">
-                <strong>How this works:</strong> select your symptoms below and add a description in your own words.
+                Select your symptoms below and add a description in your own words.
                 If your symptoms are routine, a doctor will review and may issue a prescription remotely.
                 If they are red-flag symptoms, the doctor will arrange an in-person visit at a clinic.
             </div>

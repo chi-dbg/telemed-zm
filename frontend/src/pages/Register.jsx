@@ -14,7 +14,6 @@ export default function Register() {
     const [error, setError] = useState('');
     const [loading, setLoading] = useState(false);
     const [showPassword, setShowPassword] = useState(false);
-    const [submittedUser, setSubmittedUser] = useState(null);
 
     function field(name, value) {
         setData(d => ({ ...d, [name]: value }));
@@ -26,14 +25,9 @@ export default function Register() {
 
     async function onSubmit(e) {
         e.preventDefault();
-        setLoading(true); setError(''); setSubmittedUser(null);
+        setLoading(true); setError('');
         try {
             const result = await register({ role, ...data });
-            if (result?.user?.account_status === 'pending') {
-                setSubmittedUser(result.user);
-                setLoading(false);
-                return;
-            }
             navigate(result?.user?.role === 'admin' ? '/admin' : '/overview');
         } catch (err) {
             setError(err.message || 'Registration failed');
@@ -190,7 +184,6 @@ export default function Register() {
                     </br>
 
                     {error && <Alert kind="error">{error}</Alert>}
-                    {submittedUser && <Alert kind="success">Registration submitted for administrator approval. You will be able to sign in after your account is approved.</Alert>}
 
                     <div className="field">
                         <label className="required">I am registering as</label>

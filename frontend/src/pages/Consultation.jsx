@@ -22,7 +22,19 @@ const TRIAGE_MSG = {
     routine: 'Symptoms appear suitable for remote prescription.',
 };
 
-const RTC_CONFIG = { iceServers: [] };
+// STUN lets the two browsers discover a route to each other. A TURN server can
+// be supplied for restrictive mobile networks without changing the call flow.
+const RTC_CONFIG = {
+    iceServers: [
+        { urls: import.meta.env.VITE_STUN_URL || 'stun:stun.l.google.com:19302' },
+        ...(import.meta.env.VITE_TURN_URL ? [{
+            urls: import.meta.env.VITE_TURN_URL,
+            username: import.meta.env.VITE_TURN_USERNAME || undefined,
+            credential: import.meta.env.VITE_TURN_CREDENTIAL || undefined,
+        }] : []),
+    ],
+    iceCandidatePoolSize: 4,
+};
 const MANUAL_DRUG_VALUE = '__manual__';
 const MEDICINE_FORMS = ['tablet', 'capsule', 'syrup', 'injection', 'cream', 'drops', 'inhaler', 'other'];
 const PREVIEW_SIZE_KEY = 'telemed_video_preview_size';
@@ -92,6 +104,18 @@ function VideoCall({ consultationId, currentUserId, peerLabel }) {
             sock.emit('join', { consultationId, purpose: 'video' });
         });
         sock.on('joined', () => setStatus('Video call ready.'));
+        sock.on('video-peer-joined', ({ from }) => {
+            if (!callActiveRef.current) {
+                setStatus(`${from?.role || peerLabel} joined the video room. Start video when you are ready.`);
+                return;
+            }
+
+            const stream = localStreamRef.current;
+            sock.emit('video-ready', {
+                audioEnabled: stream?.getAudioTracks().some(track => track.enabled) ?? audioEnabled,
+                videoEnabled: stream?.getVideoTracks().some(track => track.enabled) ?? videoEnabled,
+            });
+        });
         sock.on('video-ready', handlePeerReady);
         sock.on('video-offer', handleOffer);
         sock.on('video-answer', handleAnswer);
@@ -155,8 +179,17 @@ function VideoCall({ consultationId, currentUserId, peerLabel }) {
         };
         pc.onconnectionstatechange = () => {
             if (pc.connectionState === 'connected') setStatus('Video call connected.');
-            if (pc.connectionState === 'disconnected') setStatus('Video connection interrupted.');
-            if (pc.connectionState === 'failed') setStatus('Video connection failed. End the call and start again.');
+            if (pc.connectionState === 'connecting') setStatus('Connecting video...');
+            if (pc.connectionState === 'disconnected') setStatus('Video connection interrupted. Reconnecting...');
+            if (pc.connectionState === 'failed') {
+                setStatus('Video connection failed. Check both connections, then end and start the call again.');
+            }
+        };
+        pc.oniceconnectionstatechange = () => {
+            if (pc.iceConnectionState === 'checking') setStatus('Finding a video connection...');
+            if (pc.iceConnectionState === 'failed') {
+                setStatus('Could not find a video route. A TURN server may be needed on this network.');
+            }
         };
         pcRef.current = pc;
         return pc;
@@ -432,6 +465,21 @@ function ChatBox({ consultationId, currentUserId, currentUserRole }) {
     const [system, setSystem] = useState('');
     const socketRef = useRef(null);
     const boxRef = useRef(null);
+    const roomJoinedRef = useRef(false);
+
+    function mergeMessages(incoming) {
+        setMessages(current => {
+            const seen = new Set(current.map(message => String(message.message_id)));
+            const additions = incoming.filter(message => !seen.has(String(message.message_id)));
+            return additions.length ? [...current, ...additions] : current;
+        });
+    }
+
+    function syncMessages() {
+        return API.get(`/consultations/${consultationId}/messages`)
+            .then(r => mergeMessages(r.messages || []))
+            .catch(() => {});
+    }
 
     useEffect(() => {
         let mounted = true;
@@ -451,21 +499,55 @@ function ChatBox({ consultationId, currentUserId, currentUserRole }) {
         socketRef.current = sock;
 
         sock.on('connect', () => {
-            setSystem('Connected to chat server.');
+            roomJoinedRef.current = false;
+            setSystem('Connecting to consultation chat...');
             sock.emit('join', { consultationId });
         });
-        sock.on('joined', () => setSystem('Joined consultation room.'));
+        sock.on('joined', () => {
+            roomJoinedRef.current = true;
+            setSystem('Connected to chat server.');
+            syncMessages();
+        });
         sock.on('peer-joined', ({ role }) => setSystem(`A ${role} has joined the conversation.`));
         sock.on('message', msg => {
-            if (mounted) setMessages(m => [...m, msg]);
+            if (mounted) mergeMessages([msg]);
         });
         sock.on('typing', ({ role, isTyping }) => {
             if (isTyping) setSystem(`${role} is typing...`);
         });
-        sock.on('connect_error', err => setSystem('Chat connection error: ' + err.message));
-        sock.on('error', e => setSystem('Chat error: ' + (e?.error || 'unknown')));
+        sock.on('disconnect', () => {
+            roomJoinedRef.current = false;
+        });
+        sock.on('connect_error', err => {
+            roomJoinedRef.current = false;
+            setSystem('Chat connection error: ' + err.message);
+        });
+        sock.on('error', e => {
+            const message = e?.error || 'unknown';
+            if (message === 'not in a room' && sock.connected) {
+                roomJoinedRef.current = false;
+                sock.emit('join', { consultationId });
+                setSystem('Rejoining consultation chat...');
+                return;
+            }
+            setSystem('Chat error: ' + message);
+        });
 
-        return () => { mounted = false; sock.disconnect(); };
+        // Socket.IO is the immediate delivery channel. This small sync loop also
+        // picks up messages sent through the REST fallback without a page refresh.
+        const syncInterval = window.setInterval(() => {
+            if (mounted) syncMessages();
+        }, 1000);
+        const syncOnFocus = () => { if (mounted) syncMessages(); };
+        window.addEventListener('focus', syncOnFocus);
+
+        return () => {
+            mounted = false;
+            roomJoinedRef.current = false;
+            window.clearInterval(syncInterval);
+            window.removeEventListener('focus', syncOnFocus);
+            sock.disconnect();
+        };
     }, [consultationId]);
 
     useEffect(() => {
@@ -476,12 +558,18 @@ function ChatBox({ consultationId, currentUserId, currentUserRole }) {
         const t = text.trim();
         if (!t) return;
         const sock = socketRef.current;
-        if (sock && sock.connected) {
+        if (sock?.connected && roomJoinedRef.current) {
             sock.emit('message', { message: t });
         } else {
-            // REST fallback
+            // REST fallback keeps the current screen in place while reconnection occurs.
             API.post(`/consultations/${consultationId}/messages`, { message: t })
-                .then(() => location.reload())
+                .then(r => mergeMessages([{
+                    message_id: r.id,
+                    sender_user_id: currentUserId,
+                    sender_role: currentUserRole,
+                    message_text: t,
+                    sent_at: new Date().toISOString(),
+                }]))
                 .catch(e => setSystem('Send failed: ' + e.message));
         }
         setText('');
@@ -494,18 +582,22 @@ function ChatBox({ consultationId, currentUserId, currentUserRole }) {
                 <div className="chat-messages" ref={boxRef}>
                     <AnimatePresence>
                         {messages.map(msg => {
-                            const isMe = msg.sender_role === currentUserRole ||
-                                Number(msg.sender_user_id) === Number(currentUserId);
+                            const senderId = msg.sender_user_id ?? msg.senderUserId;
+                            const isMe = senderId != null && currentUserId != null
+                                ? String(senderId) === String(currentUserId)
+                                : msg.sender_role === currentUserRole;
                             return (
                                 <motion.div
                                     key={msg.message_id || `${msg.sent_at}-${msg.sender_user_id}`}
-                                    className={`chat-msg ${isMe ? 'me' : 'them'}`}
+                                    className={`chat-message-row ${isMe ? 'me' : 'them'}`}
                                     variants={chatMessageVariants(isMe)}
                                     initial="initial"
                                     animate="animate"
                                 >
-                                    {msg.message_text}
-                                    <span className="meta">{msg.sender_role} · {fmtDateTime(msg.sent_at)}</span>
+                                    <div className={`chat-msg ${isMe ? 'me' : 'them'}`}>
+                                        {msg.message_text}
+                                        <span className="meta">{isMe ? 'You' : msg.sender_role} · {fmtDateTime(msg.sent_at)}</span>
+                                    </div>
                                 </motion.div>
                             );
                         })}
@@ -887,7 +979,6 @@ function DoctorActionPanel({ consultation, onDone }) {
             <Card>
                 <h3>Close consultation</h3>
                 <p className="muted small">If no prescription or referral is needed, close the consultation with a brief diagnosis note.</p>
-                <textarea value={rx.diagnosis} onChange={e => setRx(r => ({ ...r, diagnosis: e.target.value }))} placeholder="Diagnosis / advice given..." />
                 <div style={{ marginTop: 12 }}>
                     <motion.button className="btn-secondary" onClick={closeConsultation} whileTap={{ scale: 0.97 }}>Close as completed</motion.button>
                 </div>
@@ -997,11 +1088,11 @@ export default function Consultation() {
 
             <CommunicationPanel
                 consultation={c}
-                currentUserId={user.user_id}
+                currentUserId={user.id}
                 userRole={user.role}
             />
 
-            <div className="grid split-2">
+            <div className="consultation-detail-stack">
                 <motion.div variants={staggerContainer} initial="initial" animate="animate">
                     <Card id="submitted-symptoms" className="submitted-symptoms-card">
                         <motion.div variants={staggerItem}>

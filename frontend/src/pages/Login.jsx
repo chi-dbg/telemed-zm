@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { slideFromLeft, slideFromRight, staggerContainer, staggerItem, buttonPress } from '../lib/animations.js';
 import { useAuth } from '../hooks/useAuth.jsx';
@@ -9,6 +9,7 @@ import { BrandIcon, CheckIcon, EyeIcon, EyeOffIcon } from '../components/Icons.j
 export default function Login() {
     const { login } = useAuth();
     const navigate = useNavigate();
+    const location = useLocation();
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [showPassword, setShowPassword] = useState(false);
@@ -69,6 +70,7 @@ export default function Login() {
                     <p className="lead">Use the email you registered with.</p>
 
                     {error && <Alert kind="error">{error}</Alert>}
+                    {location.state?.passwordReset && <Alert kind="success">Password reset complete. Sign in with your new password.</Alert>}
 
                     <motion.form onSubmit={onSubmit} variants={staggerContainer} initial="initial" animate="animate">
                         <motion.div className="field" variants={staggerItem}>
@@ -92,6 +94,7 @@ export default function Login() {
 
                     <div className="divider-with-text">or</div>
 
+                    <p className="auth-switch"><Link to="/forgot-password">Forgot your password?</Link></p>
                     <p className="auth-switch">Don't have an account? <Link to="/register">Create one</Link></p>
                     
 

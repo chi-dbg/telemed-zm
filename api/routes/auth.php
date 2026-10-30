@@ -45,7 +45,7 @@ function auth_register(): void
 
         $hash = password_hash($data['password'], PASSWORD_BCRYPT);
         $stmt = $pdo->prepare(
-            "INSERT INTO users (full_name, email, password_hash, role, phone, is_active, account_status) VALUES (?, ?, ?, ?, ?, 0, 'pending')"
+            "INSERT INTO users (full_name, email, password_hash, role, phone, is_active, account_status) VALUES (?, ?, ?, ?, ?, 1, 'approved')"
         );
         $stmt->execute([
             $data['full_name'],
@@ -94,22 +94,20 @@ function auth_register(): void
         }
 
         $pdo->commit();
-        audit_log($userId, $role, 'user.registration_submitted', 'user', $userId, "New $role registration awaiting administrator approval");
-
-        $stmt = $pdo->query("SELECT user_id FROM users WHERE role = 'admin' AND is_active = 1 AND account_status = 'approved'");
-        foreach ($stmt->fetchAll() as $admin) {
-            notify((int)$admin['user_id'], 'New account awaiting approval', $data['full_name'] . " registered as $role.", 'system', $userId);
-        }
+        audit_log($userId, $role, 'user.registration_approved', 'user', $userId, "New $role registration automatically approved");
+        $token = jwt_sign(['uid' => $userId, 'role' => $role, 'email' => $data['email']]);
+        set_session_cookie($token);
 
         send_json([
-            'message' => 'Registration submitted for administrator approval',
+            'message' => 'Registration complete',
             'user'    => [
                 'id' => $userId,
                 'email' => $data['email'],
                 'role' => $role,
                 'full_name' => $data['full_name'],
-                'account_status' => 'pending',
+                'account_status' => 'approved',
             ],
+            'token' => $token,
         ], 201);
     } catch (Throwable $e) {
         if ($pdo->inTransaction()) $pdo->rollBack();
@@ -181,6 +179,82 @@ function auth_logout(): void
     send_json(['message' => 'Logged out']);
 }
 
+function auth_password_reset_request(): void
+{
+    $data = read_json();
+    require_fields($data, ['email']);
+    $email = trim(strtolower((string)$data['email']));
+    $pdo = DB::conn();
+    $stmt = $pdo->prepare('SELECT user_id FROM users WHERE email = ? LIMIT 1');
+    $stmt->execute([$email]);
+    $user = $stmt->fetch();
+
+    // Keep the outward response identical whether or not an address exists.
+    $response = ['message' => 'If that account exists, a password reset email has been sent.'];
+    if (!$user) {
+        send_json($response);
+    }
+
+    $pdo->prepare('DELETE FROM password_reset_tokens WHERE user_id = ? OR expires_at < NOW()')->execute([(int)$user['user_id']]);
+    $token = bin2hex(random_bytes(20));
+    $stmt = $pdo->prepare(
+        'INSERT INTO password_reset_tokens (user_id, token_hash, expires_at) VALUES (?, ?, DATE_ADD(NOW(), INTERVAL 30 MINUTE))'
+    );
+    $stmt->execute([(int)$user['user_id'], hash('sha256', $token)]);
+
+    $sent = send_platform_email(
+        $email,
+        'Reset your Telemed ZM password',
+        "Hello,\n\nA password reset was requested for your Telemed ZM account. " .
+        "Use this one-time reset code: {$token}\n\nThis code expires in 30 minutes. " .
+        "If you did not request this, you can safely ignore this email.\n\nTelemed ZM"
+    );
+    if (!$sent) {
+        error_log("Password reset email could not be sent to {$email}");
+    }
+    send_json($response);
+}
+
+function auth_password_reset(): void
+{
+    $data = read_json();
+    require_fields($data, ['email', 'code', 'password']);
+    $email = trim(strtolower((string)$data['email']));
+    $password = (string)$data['password'];
+    if (!filter_var($email, FILTER_VALIDATE_EMAIL) || strlen($password) < 8) {
+        send_json(['error' => 'Enter a valid email and a password with at least 8 characters'], 400);
+    }
+
+    $pdo = DB::conn();
+    $stmt = $pdo->prepare(
+        'SELECT pr.reset_id, pr.user_id, u.role
+         FROM password_reset_tokens pr
+         JOIN users u ON u.user_id = pr.user_id
+         WHERE u.email = ? AND pr.token_hash = ? AND pr.used_at IS NULL AND pr.expires_at > NOW()
+         ORDER BY pr.created_at DESC LIMIT 1'
+    );
+    $stmt->execute([$email, hash('sha256', (string)$data['code'])]);
+    $reset = $stmt->fetch();
+    if (!$reset) {
+        send_json(['error' => 'That reset code is invalid or has expired'], 400);
+    }
+
+    try {
+        $pdo->beginTransaction();
+        $pdo->prepare('UPDATE users SET password_hash = ? WHERE user_id = ?')
+            ->execute([password_hash($password, PASSWORD_BCRYPT), (int)$reset['user_id']]);
+        $pdo->prepare('UPDATE password_reset_tokens SET used_at = NOW() WHERE user_id = ?')
+            ->execute([(int)$reset['user_id']]);
+        $pdo->commit();
+    } catch (Throwable $e) {
+        if ($pdo->inTransaction()) $pdo->rollBack();
+        send_json(['error' => 'Could not reset the password'], 500);
+    }
+
+    audit_log((int)$reset['user_id'], $reset['role'], 'user.password_reset', 'user', (int)$reset['user_id'], 'Password reset completed');
+    send_json(['message' => 'Password reset successful. You can now sign in.']);
+}
+
 function auth_me(): void
 {
     $payload = require_auth();
@@ -208,6 +282,8 @@ function auth_me(): void
         $profile = $stmt->fetch();
     }
 
+    // Keep the current-user payload consistent with the login response.
+    $u['id'] = (int)$u['user_id'];
     send_json(['user' => $u, 'profile' => $profile]);
 }
 

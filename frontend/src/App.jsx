@@ -5,6 +5,7 @@ import Layout from './components/Layout.jsx';
 
 import Landing from './pages/Landing.jsx';
 import Login from './pages/Login.jsx';
+import ForgotPassword from './pages/ForgotPassword.jsx';
 import Register from './pages/Register.jsx';
 import Help from './pages/Help.jsx';
 
@@ -37,6 +38,7 @@ export default function App() {
                     {/* Public */}
                     <Route path="/" element={<Landing />} />
                     <Route path="/login" element={<Login />} />
+                    <Route path="/forgot-password" element={<ForgotPassword />} />
                     <Route path="/register" element={<Register />} />
                     <Route path="/help" element={<Help />} />
 

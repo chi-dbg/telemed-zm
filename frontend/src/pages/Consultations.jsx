@@ -8,7 +8,7 @@ import Pill from '../components/Pill.jsx';
 import Empty from '../components/Empty.jsx';
 import { fmtDateTime } from '../lib/helpers.js';
 import { staggerContainer, staggerItem } from '../lib/animations.js';
-import { MessageIcon } from '../components/Icons.jsx';
+import { EyeIcon, MessageIcon, VideoIcon } from '../components/Icons.jsx';
 
 export default function Consultations() {
     const { user } = useAuth();
@@ -70,26 +70,34 @@ export default function Consultations() {
                                     <span className="consultation-tile-label">{isPatient ? 'Doctor' : 'Patient'}</span>
                                     <strong>{isPatient ? (c.doctor_name || '— unassigned —') : c.patient_name}</strong>
                                 </div>
-                                <span className="tag primary">{c.communication_mode === 'video' ? 'Video' : 'Chat'}</span>
+                                <span
+                                    className="consultation-mode-indicator"
+                                    title={c.communication_mode === 'video' ? 'Video consultation' : 'Chat consultation'}
+                                    aria-label={c.communication_mode === 'video' ? 'Video consultation' : 'Chat consultation'}
+                                >
+                                    {c.communication_mode === 'video' ? <VideoIcon size={18} /> : <MessageIcon size={18} />}
+                                </span>
                             </div>
 
                             <div className="consultation-tile-meta">
                                 <div>
                                     <span className="consultation-tile-label">Triage</span>
-                                    <Pill status={c.triage_recommendation || 'routine'} />
+                                    <Pill status={c.triage_recommendation || 'routine'} className="consultation-triage-pill" />
                                 </div>
                                 <div>
                                     <span className="consultation-tile-label">Symptoms</span>
                                     <button
                                         type="button"
-                                        className="btn-ghost btn-sm consultation-symptoms-button"
+                                        className="consultation-symptoms-button icon-btn"
+                                        title="View submitted symptoms"
+                                        aria-label="View submitted symptoms"
                                         onKeyDown={(e) => e.stopPropagation()}
                                         onClick={(e) => {
                                             e.stopPropagation();
                                             navigate(symptomsPath(c));
                                         }}
                                     >
-                                        View
+                                        <EyeIcon size={18} />
                                     </button>
                                 </div>
                             </div>
