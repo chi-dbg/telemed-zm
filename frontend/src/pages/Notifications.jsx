@@ -26,6 +26,7 @@ export default function Notifications() {
 
     async function markRead(id) {
         await API.post(`/notifications/${id}/read`);
+        window.dispatchEvent(new Event('telemed:notifications-changed'));
         load();
     }
 

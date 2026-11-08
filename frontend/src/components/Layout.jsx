@@ -16,9 +16,28 @@ export default function Layout({ title, subtitle, allowedRoles }) {
 
     useEffect(() => {
         if (!user) return;
-        API.get('/notifications')
-            .then(r => setUnread(r.notifications.filter(n => !n.is_read).length))
-            .catch(() => {});
+        let active = true;
+        const refreshUnread = () => {
+            API.get('/notifications')
+                .then(r => {
+                    if (!active) return;
+                    const count = (r.notifications || []).filter(n => Number(n.is_read) === 0).length;
+                    setUnread(count);
+                })
+                .catch(() => {});
+        };
+
+        refreshUnread();
+        const interval = window.setInterval(refreshUnread, 5000);
+        window.addEventListener('focus', refreshUnread);
+        window.addEventListener('telemed:notifications-changed', refreshUnread);
+
+        return () => {
+            active = false;
+            window.clearInterval(interval);
+            window.removeEventListener('focus', refreshUnread);
+            window.removeEventListener('telemed:notifications-changed', refreshUnread);
+        };
     }, [user, location.pathname]);
 
     useEffect(() => {

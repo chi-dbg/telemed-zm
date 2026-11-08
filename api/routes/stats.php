@@ -32,10 +32,10 @@ function stats_overview(): void
         $stmt->execute([$pid]); $upcoming = (int)$stmt->fetch()['c'];
 
         $payload['cards'] = [
-            ['label' => 'Active consultations',       'value' => $active,    'icon' => '💬', 'tone' => 'primary'],
-            ['label' => 'Total prescriptions',        'value' => $rxTotal,   'icon' => '💊', 'tone' => 'primary'],
-            ['label' => 'Pending at pharmacy',        'value' => $rxPending, 'icon' => '⏳', 'tone' => 'warn'],
-            ['label' => 'Upcoming referrals',         'value' => $upcoming,  'icon' => '🏥', 'tone' => 'primary'],
+            ['label' => 'Active consultations',       'value' => $active,    'icon' => 'message', 'tone' => 'primary'],
+            ['label' => 'Total prescriptions',        'value' => $rxTotal,   'icon' => 'pill', 'tone' => 'primary'],
+            ['label' => 'Pending at pharmacy',        'value' => $rxPending, 'icon' => 'clock', 'tone' => 'warn'],
+            ['label' => 'Upcoming referrals',         'value' => $upcoming,  'icon' => 'hospital', 'tone' => 'primary'],
         ];
 
         // Recent activity feed (mixed)
@@ -85,10 +85,10 @@ function stats_overview(): void
         $stmt->execute([$did]); $patients = (int)$stmt->fetch()['c'];
 
         $payload['cards'] = [
-            ['label' => 'In queue (system-wide)',     'value' => $queued,   'icon' => '⏳', 'tone' => 'warn'],
-            ['label' => 'My active consultations',    'value' => $active,   'icon' => '💬', 'tone' => 'primary'],
-            ['label' => 'Prescriptions issued',       'value' => $rxTotal,  'icon' => '💊', 'tone' => 'success'],
-            ['label' => 'Patients seen',              'value' => $patients, 'icon' => '👥', 'tone' => 'primary'],
+            ['label' => 'In queue (system-wide)',     'value' => $queued,   'icon' => 'clock', 'tone' => 'warn'],
+            ['label' => 'My active consultations',    'value' => $active,   'icon' => 'message', 'tone' => 'primary'],
+            ['label' => 'Prescriptions issued',       'value' => $rxTotal,  'icon' => 'pill', 'tone' => 'success'],
+            ['label' => 'Patients seen',              'value' => $patients, 'icon' => 'users', 'tone' => 'primary'],
         ];
 
         $stmt = $pdo->prepare(
@@ -119,10 +119,10 @@ function stats_overview(): void
         $stmt->execute([$phid]); $patients = (int)$stmt->fetch()['c'];
 
         $payload['cards'] = [
-            ['label' => 'Pending dispensing',         'value' => $pending,   'icon' => '⏳', 'tone' => 'warn'],
-            ['label' => 'Dispensed total',            'value' => $dispensed, 'icon' => '✅', 'tone' => 'success'],
-            ['label' => 'Marked unavailable',         'value' => $unavail,   'icon' => '⚠', 'tone' => 'danger'],
-            ['label' => 'Unique patients served',     'value' => $patients,  'icon' => '👥', 'tone' => 'primary'],
+            ['label' => 'Pending dispensing',         'value' => $pending,   'icon' => 'clock', 'tone' => 'warn'],
+            ['label' => 'Dispensed total',            'value' => $dispensed, 'icon' => 'check', 'tone' => 'success'],
+            ['label' => 'Marked unavailable',         'value' => $unavail,   'icon' => 'alert', 'tone' => 'danger'],
+            ['label' => 'Unique patients served',     'value' => $patients,  'icon' => 'users', 'tone' => 'primary'],
         ];
 
         $stmt = $pdo->prepare(

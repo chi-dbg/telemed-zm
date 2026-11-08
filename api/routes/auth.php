@@ -11,7 +11,7 @@ require_once __DIR__ . '/../middleware.php';
 function auth_register(): void
 {
     $data = read_json();
-    require_fields($data, ['full_name', 'email', 'password', 'role']);
+    require_fields($data, ['full_name', 'email', 'password', 'role', 'phone']);
 
     $role = $data['role'];
     if (!in_array($role, ['patient', 'doctor', 'pharmacist'], true)) {
@@ -25,8 +25,10 @@ function auth_register(): void
         send_json(['error' => 'Password must be at least 8 characters'], 400);
     }
 
-    if ($role === 'doctor') {
-        require_fields($data, ['license_number']);
+    if ($role === 'patient') {
+        require_fields($data, ['date_of_birth', 'gender', 'address', 'emergency_contact']);
+    } elseif ($role === 'doctor') {
+        require_fields($data, ['license_number', 'specialisation', 'affiliated_institution']);
     } elseif ($role === 'pharmacist') {
         require_fields($data, ['pharmacy_name', 'pharmacy_registration_number', 'pharmacy_address']);
     }
@@ -64,10 +66,10 @@ function auth_register(): void
             );
             $stmt->execute([
                 $userId,
-                $data['date_of_birth'] ?? null,
-                $data['gender']        ?? null,
-                $data['address']       ?? null,
-                $data['emergency_contact'] ?? null,
+                $data['date_of_birth'],
+                $data['gender'],
+                $data['address'],
+                $data['emergency_contact'],
             ]);
         } elseif ($role === 'doctor') {
             $stmt = $pdo->prepare(
@@ -77,8 +79,8 @@ function auth_register(): void
             $stmt->execute([
                 $userId,
                 $data['license_number'],
-                $data['specialisation']        ?? 'General Practice',
-                $data['affiliated_institution']?? null,
+                $data['specialisation'],
+                $data['affiliated_institution'],
             ]);
         } else { // pharmacist
             $stmt = $pdo->prepare(

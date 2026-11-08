@@ -741,7 +741,8 @@ label {
     font-weight: 500;
     font-size: .88rem;
 }
-label.required::after { content: ' *'; color: var(--danger); }
+/* Required fields are validated without adding visual symbols to their labels. */
+label.required::after { content: none; }
 input[type=text], input[type=email], input[type=password], input[type=tel],
 input[type=date], input[type=time], input[type=number], input[type=search],
 select, textarea {
@@ -1518,7 +1519,7 @@ td .pill { vertical-align: middle; }
  * ================================================================= */
 .chat-wrap {
     display: grid; grid-template-rows: 1fr auto;
-    height: 540px;
+    height: clamp(360px, 52vh, 500px);
     background: var(--surface);
     border: 1px solid var(--border-light);
     border-radius: var(--radius);
@@ -1526,8 +1527,8 @@ td .pill { vertical-align: middle; }
 }
 .chat-messages {
     overflow-y: auto;
-    padding: 18px;
-    background: var(--bg);
+    padding: 16px 18px;
+    background: rgba(237, 246, 232, .78);
     display: flex; flex-direction: column; gap: 8px;
 }
 .chat-message-row {
@@ -1538,26 +1539,50 @@ td .pill { vertical-align: middle; }
 .chat-message-row.me { justify-content: flex-end; }
 .chat-message-row.them { justify-content: flex-start; }
 .chat-msg {
-    max-width: 70%;
+    max-width: min(76%, 460px);
     width: fit-content;
     min-width: 0;
-    padding: 10px 14px;
-    border-radius: 16px;
+    padding: 8px 11px 6px;
+    border-radius: 9px;
     line-height: 1.4;
     font-size: .94rem;
     word-wrap: break-word;
 }
 .chat-msg.me {
-    background: var(--primary);
-    color: white;
-    border-bottom-right-radius: 4px;
+    background: #d9fdd3;
+    color: #1d2b22;
+    border-bottom-right-radius: 2px;
 }
 .chat-msg.them {
-    background: var(--surface);
-    border: 1px solid var(--border-light);
-    border-bottom-left-radius: 4px;
+    background: #fff;
+    border: 0;
+    color: #1d2b22;
+    border-bottom-left-radius: 2px;
+    box-shadow: 0 1px 1px rgba(18, 62, 37, .12);
 }
-.chat-msg .meta { display: block; font-size: .68rem; opacity: .75; margin-top: 4px; }
+.chat-msg .meta { display: block; text-align: right; font-size: .66rem; opacity: .68; margin-top: 3px; }
+
+/* Keep doctor and patient conversations visually identical: own messages on
+   the right in green, and the other participant's messages on the left. */
+.app.role-patient .chat-message-row.me,
+.app.role-doctor .chat-message-row.me { justify-content: flex-end; }
+.app.role-patient .chat-message-row.them,
+.app.role-doctor .chat-message-row.them { justify-content: flex-start; }
+.app.role-patient .chat-msg.me,
+.app.role-doctor .chat-msg.me {
+    background: #d9fdd3;
+    color: #1d2b22;
+    border: 0;
+    border-bottom-right-radius: 2px;
+}
+.app.role-patient .chat-msg.them,
+.app.role-doctor .chat-msg.them {
+    background: #fff;
+    color: #1d2b22;
+    border: 0;
+    border-bottom-left-radius: 2px;
+    box-shadow: 0 1px 1px rgba(18, 62, 37, .12);
+}
 .chat-input-row {
     display: flex; gap: 8px; padding: 12px;
     border-top: 1px solid var(--border-light);
@@ -1652,26 +1677,38 @@ td .pill { vertical-align: middle; }
 }
 .symptom-item:hover { border-color: var(--primary); background: var(--primary-tint); }
 .symptom-item.selected {
-    border-color: var(--primary);
-    background: var(--primary-soft);
+    border-color: #66a95d;
+    background: rgba(210, 243, 198, .94);
     color: var(--primary-dark);
-    filter: saturate(.65);
+    box-shadow: 0 0 0 2px rgba(119, 188, 105, .34), 0 0 18px rgba(112, 190, 95, .48);
+    filter: none;
     font-weight: 600;
-    opacity: .68;
+    opacity: 1;
+    animation: selected-symptom-glow 1.8s ease-in-out infinite alternate;
 }
 .symptom-item.selected:hover {
     filter: none;
-    opacity: .88;
+    opacity: 1;
 }
 .symptom-item.high   { border-left: 4px solid var(--danger); }
 .symptom-item.medium { border-left: 4px solid var(--warn); }
 .symptom-item.low    { border-left: 4px solid var(--success); }
+.symptom-item.selected.high,
+.symptom-item.selected.medium,
+.symptom-item.selected.low { border-left-color: #66a95d; }
 .symptom-item .sev-dot {
     width: 8px; height: 8px; border-radius: 50%;
     background: var(--success);
 }
 .symptom-item.medium .sev-dot { background: var(--warn); }
 .symptom-item.high   .sev-dot { background: var(--danger); }
+@keyframes selected-symptom-glow {
+    from { box-shadow: 0 0 0 2px rgba(119, 188, 105, .28), 0 0 10px rgba(112, 190, 95, .30); }
+    to { box-shadow: 0 0 0 3px rgba(119, 188, 105, .46), 0 0 23px rgba(112, 190, 95, .62); }
+}
+@media (prefers-reduced-motion: reduce) {
+    .symptom-item.selected { animation: none; }
+}
 
 .triage-result {
     margin-top: 18px;

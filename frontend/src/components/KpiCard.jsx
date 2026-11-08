@@ -8,18 +8,10 @@ import {
 } from './Icons.jsx';
 
 /**
- * Maps the emoji string the backend sends in /stats to a real SVG icon.
+ * Maps the icon name the backend sends in /stats to a real SVG icon.
  * Unknown values fall back to ClockIcon.
  */
-const ICON_BY_EMOJI = {
-    '⏳': ClockIcon,
-    '💬': MessageIcon,
-    '💊': PillIcon,
-    '🏥': HospitalIcon,
-    '👥': UsersIcon,
-    '✅': CheckCircleIcon,
-    '⚠':  AlertIcon,
-    '📥': InboxIcon,
+const ICON_BY_NAME = {
     hospital: HospitalIcon,
     users: UsersIcon,
     user: UserIcon,
@@ -35,7 +27,7 @@ const ICON_BY_EMOJI = {
 function resolveIcon(input) {
     if (!input) return ClockIcon;
     if (typeof input === 'function') return input;
-    if (typeof input === 'string' && ICON_BY_EMOJI[input]) return ICON_BY_EMOJI[input];
+    if (typeof input === 'string' && ICON_BY_NAME[input]) return ICON_BY_NAME[input];
     return ClockIcon;
 }
 

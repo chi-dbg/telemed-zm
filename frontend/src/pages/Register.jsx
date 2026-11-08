@@ -25,6 +25,17 @@ export default function Register() {
 
     async function onSubmit(e) {
         e.preventDefault();
+        const roleFields = {
+            patient: ['date_of_birth', 'gender', 'address', 'emergency_contact'],
+            doctor: ['license_number', 'specialisation', 'affiliated_institution'],
+            pharmacist: ['pharmacy_name', 'pharmacy_registration_number', 'pharmacy_address'],
+        };
+        const requiredFields = ['full_name', 'phone', 'email', 'password', ...(roleFields[role] || [])];
+        const missing = requiredFields.filter(name => !String(data[name] || '').trim());
+        if (missing.length) {
+            setError('Please complete every field before creating your account.');
+            return;
+        }
         setLoading(true); setError('');
         try {
             const result = await register({ role, ...data });
@@ -41,34 +52,37 @@ export default function Register() {
             <>
                 <div className="grid grid-2">
                     <div className="field">
-                        <label>Date of birth</label>
+                        <label className="required">Date of birth</label>
                         <input
                             type="date"
+                            required
                             value={valueOf('date_of_birth')}
-                            onChange={e => field('date_of_birth', e.target.value || null)}
+                            onChange={e => field('date_of_birth', e.target.value)}
                         />
                     </div>
-                    <div className="field"><label>Gender</label>
-                        <select value={valueOf('gender')} onChange={e => field('gender', e.target.value || null)}>
+                    <div className="field"><label className="required">Gender</label>
+                        <select required value={valueOf('gender')} onChange={e => field('gender', e.target.value)}>
                             <option value="">--</option><option>male</option><option>female</option><option>other</option>
                         </select>
                     </div>
                 </div>
                 <div className="field">
-                    <label>Address</label>
+                    <label className="required">Address</label>
                     <input
                         type="text"
+                        required
                         value={valueOf('address')}
-                        onChange={e => field('address', e.target.value || null)}
+                        onChange={e => field('address', e.target.value)}
                         placeholder="Town / district"
                     />
                 </div>
                 <div className="field">
-                    <label>Emergency contact</label>
+                    <label className="required">Emergency contact</label>
                     <input
                         type="tel"
+                        required
                         value={valueOf('emergency_contact')}
-                        onChange={e => field('emergency_contact', e.target.value || null)}
+                        onChange={e => field('emergency_contact', e.target.value)}
                     />
                 </div>
             </>
@@ -90,9 +104,10 @@ export default function Register() {
                         />
                     </div>
                     <div className="field">
-                        <label>Specialisation</label>
+                        <label className="required">Specialisation</label>
                         <input
                             type="text"
+                            required
                             value={valueOf('specialisation')}
                             onChange={e => field('specialisation', e.target.value)}
                             placeholder="General Practice"
@@ -100,11 +115,12 @@ export default function Register() {
                     </div>
                 </div>
                 <div className="field">
-                    <label>Affiliated institution</label>
+                    <label className="required">Affiliated institution</label>
                     <input
                         type="text"
+                        required
                         value={valueOf('affiliated_institution')}
-                        onChange={e => field('affiliated_institution', e.target.value || null)}
+                        onChange={e => field('affiliated_institution', e.target.value)}
                     />
                 </div>
             </>
@@ -124,7 +140,7 @@ export default function Register() {
                         />
                     </div>
                     <div className="field">
-                        <label className="required">HPCZ registration #</label>
+                        <label className="required">HPCZ registration number</label>
                         <input
                             type="text"
                             required
@@ -197,7 +213,7 @@ export default function Register() {
                     <form onSubmit={onSubmit}>
                         <div className="grid grid-2">
                             <div className="field"><label className="required">Full name</label><input type="text" required onChange={e => field('full_name', e.target.value)} /></div>
-                            <div className="field"><label>Phone</label><input type="tel" onChange={e => field('phone', e.target.value || null)} placeholder="+260..." /></div>
+                            <div className="field"><label className="required">Phone</label><input type="tel" required onChange={e => field('phone', e.target.value)} placeholder="+260..." /></div>
                         </div>
                         <div className="grid grid-2">
                             <div className="field"><label className="required">Email</label><input type="email" required onChange={e => field('email', e.target.value)} /></div>

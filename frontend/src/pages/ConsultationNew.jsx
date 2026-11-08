@@ -44,6 +44,7 @@ export default function ConsultationNew() {
     const [communicationMode, setCommunicationMode] = useState('chat');
     const [freeText, setFreeText] = useState('');
     const [triage, setTriage] = useState(null);
+    const selectedSymptoms = RED_FLAGS.filter(([key]) => selected.has(key));
 
     function toggle(key) {
         setSelected(s => {
@@ -181,6 +182,36 @@ export default function ConsultationNew() {
                             </motion.div>
                         ))}
                     </motion.div>
+                    <AnimatePresence>
+                        {selectedSymptoms.length > 0 && (
+                            <motion.div
+                                className="symptom-summary"
+                                initial={{ opacity: 0, y: 8 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                exit={{ opacity: 0, y: -6 }}
+                            >
+                                <div className="symptom-summary-header">
+                                    <strong>Selected symptoms</strong>
+                                    <span>{selectedSymptoms.length} selected</span>
+                                </div>
+                                <div className="selected-symptom-list">
+                                    {selectedSymptoms.map(([key, label, severity]) => (
+                                        <button
+                                            type="button"
+                                            className={`selected-symptom-chip ${severity}`}
+                                            key={key}
+                                            onClick={() => toggle(key)}
+                                            aria-label={`Remove ${label}`}
+                                        >
+                                            <span className="sev-dot" />
+                                            {label}
+                                            <span className="chip-remove">Remove</span>
+                                        </button>
+                                    ))}
+                                </div>
+                            </motion.div>
+                        )}
+                    </AnimatePresence>
                 </div>
 
                 <div className="field">

@@ -582,10 +582,17 @@ function ChatBox({ consultationId, currentUserId, currentUserRole }) {
                 <div className="chat-messages" ref={boxRef}>
                     <AnimatePresence>
                         {messages.map(msg => {
-                            const senderId = msg.sender_user_id ?? msg.senderUserId;
-                            const isMe = senderId != null && currentUserId != null
-                                ? String(senderId) === String(currentUserId)
-                                : msg.sender_role === currentUserRole;
+                            const senderId = msg.sender_user_id ?? msg.senderUserId ?? msg.sender_id;
+                            const hasParticipantRole = ['patient', 'doctor'].includes(msg.sender_role);
+                            // Each consultation has one patient and one doctor. Prefer the
+                            // role recorded with the message, then fall back to the user ID
+                            // for older messages that do not include a role.
+                            const isMe = hasParticipantRole
+                                ? msg.sender_role === currentUserRole
+                                : senderId != null && currentUserId != null && String(senderId) === String(currentUserId);
+                            const senderLabel = isMe
+                                ? 'You'
+                                : (msg.sender_role ? `${msg.sender_role.charAt(0).toUpperCase()}${msg.sender_role.slice(1)}` : 'Participant');
                             return (
                                 <motion.div
                                     key={msg.message_id || `${msg.sent_at}-${msg.sender_user_id}`}
@@ -596,7 +603,7 @@ function ChatBox({ consultationId, currentUserId, currentUserRole }) {
                                 >
                                     <div className={`chat-msg ${isMe ? 'me' : 'them'}`}>
                                         {msg.message_text}
-                                        <span className="meta">{isMe ? 'You' : msg.sender_role} · {fmtDateTime(msg.sent_at)}</span>
+                                        <span className="meta">{senderLabel} · {fmtDateTime(msg.sent_at)}</span>
                                     </div>
                                 </motion.div>
                             );
@@ -1088,7 +1095,7 @@ export default function Consultation() {
 
             <CommunicationPanel
                 consultation={c}
-                currentUserId={user.id}
+                currentUserId={user.id ?? user.user_id}
                 userRole={user.role}
             />
 

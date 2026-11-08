@@ -58,10 +58,7 @@ function require_auth(?array $allowedRoles = null): array
     return $payload;
 }
 
-/**
- * Apply CORS headers (development convenience).
- * In production these are usually set at the web-server level.
- */
+
 function apply_cors(): void
 {
     $config = require __DIR__ . '/config.php';

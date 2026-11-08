@@ -47,7 +47,7 @@ export default function Records() {
                         <Card>
                             <div className="card-title-row">
                                 <h2>Profile</h2>
-                                <Link to="/profile" className="btn-ghost btn-sm">Edit ↗</Link>
+                                <Link to="/profile" className="btn-ghost btn-sm">Edit</Link>
                             </div>
                             <div className="grid grid-2 record-detail-grid">
                                 <div><strong>Name:</strong> {data.patient.full_name}</div>
@@ -101,7 +101,7 @@ export default function Records() {
                         <Card>
                             <div className="card-title-row">
                                 <h3>Allergies</h3>
-                                <Link to="/allergies" className="btn-ghost btn-sm">Manage ↗</Link>
+                                <Link to="/allergies" className="btn-ghost btn-sm">Manage</Link>
                             </div>
                             {allergies.map(a => (
                                 <div key={a.allergy_id} style={{ padding: '8px 0', borderBottom: '1px solid var(--border-light)' }}>
@@ -112,7 +112,7 @@ export default function Records() {
                         </Card>
                     ) : (
                         <Card>
-                            <div className="card-title-row"><h3>Allergies</h3><Link to="/allergies" className="btn-ghost btn-sm">Add allergies ↗</Link></div>
+                            <div className="card-title-row"><h3>Allergies</h3><Link to="/allergies" className="btn-ghost btn-sm">Add allergies</Link></div>
                             <p className="muted small">No allergies on file. Adding them helps doctors prescribe safely.</p>
                         </Card>
                     )}

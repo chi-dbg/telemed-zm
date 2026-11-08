@@ -56,7 +56,6 @@ export default function Login() {
                     </motion.div>
                 </div>
                 <div style={{ fontSize: '.85rem', color: 'rgba(226, 218, 218, 0.65)' }}>
-                    Zambia University College of Technology · Bachelor of Information Technology · 2026
                 </div>
             </motion.div>
 

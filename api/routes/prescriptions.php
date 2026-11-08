@@ -30,14 +30,15 @@ function rx_create(): void
 
     $pdo->beginTransaction();
     try {
-        // Insert prescription with placeholder UID, then update with the real UID
+        $temporaryUid = 'TMP-RX-' . bin2hex(random_bytes(12));
         $ins = $pdo->prepare(
             "INSERT INTO prescriptions
              (prescription_uid, consultation_id, patient_id, doctor_id, pharmacist_id,
               medication_name, dosage, frequency, duration, instructions, status)
-             VALUES ('PENDING', ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending')"
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending')"
         );
         $ins->execute([
+            $temporaryUid,
             $c['consultation_id'],
             $c['patient_id'],
             $did,
