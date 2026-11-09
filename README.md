@@ -146,7 +146,7 @@ npm run build
 This builds the React app into `../public/`, which Apache serves. To build for
 Render's static site instead, use `npm run build:render` (outputs to `dist/`).
 
-> **For development with hot reload**, run `npm run dev` and visit `http://localhost:5173`. The Vite dev server proxies `/telemed-platform/api/*` to your local Apache/PHP API.
+> **For development with hot reload**, run `npm run dev` and visit `http://localhost:5174`. The Vite dev server proxies `/telemed-platform/api/*` to your local Apache/PHP API and starts the local chat/video service on port 4311.
 
 ### 5. Install and start the chat server
 

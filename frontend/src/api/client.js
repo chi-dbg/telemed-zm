@@ -58,14 +58,17 @@ export const API = {
 };
 
 export const CHAT_SERVER_URL = (() => {
-    if (typeof window === 'undefined') return 'http://localhost:4310';
-    if (import.meta.env.VITE_CHAT_SERVER_URL) return import.meta.env.VITE_CHAT_SERVER_URL;
-    const chatPort = import.meta.env.VITE_CHAT_PORT || '4310';
+    if (typeof window === 'undefined') return 'http://localhost:4311';
+    const chatPort = import.meta.env.VITE_CHAT_PORT || '4311';
     if (import.meta.env.DEV) {
-        // Vite proxies Socket.IO locally. This keeps camera access and signaling
-        // on the same browser origin, including phones using HTTPS over Wi-Fi.
-        return window.location.origin;
+        // Local development must always use the local chat server, even if a
+        // Render URL exists in an environment file. HTTP Vite sessions connect
+        // directly to port 4310; the HTTPS dev session uses Vite's proxy to
+        // avoid mixed-content blocking.
+        if (window.location.protocol === 'https:') return window.location.origin;
+        return `http://${window.location.hostname}:${chatPort}`;
     }
+    if (import.meta.env.VITE_CHAT_SERVER_URL) return import.meta.env.VITE_CHAT_SERVER_URL;
 
     return `${window.location.protocol === 'https:' ? 'https' : 'http'}://${window.location.hostname}:${chatPort}`;
 })();

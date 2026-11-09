@@ -15,7 +15,7 @@ const keyPath = resolve(__dirname, '../certs/telemed-dev-key.pem');
 const devHttps = process.env.VITE_DEV_HTTPS === '1' && existsSync(certPath) && existsSync(keyPath)
     ? { cert: readFileSync(certPath), key: readFileSync(keyPath) }
     : undefined;
-const chatPort = Number(process.env.CHAT_PORT || '4310');
+const chatPort = Number(process.env.CHAT_PORT || '4311');
 const autoChatServer = process.env.VITE_AUTO_CHAT_SERVER !== '0';
 
 function portIsOpen(port, host = '127.0.0.1', timeoutMs = 700) {
@@ -142,7 +142,10 @@ const socketProxy = devHttps
  *  - base "./" so the build works regardless of subfolder mount path
  */
 export default defineConfig({
-    plugins: [telemedChatServerPlugin(), react()],
+    // `scripts/dev-server.mjs`, which backs the root `npm run dev` command,
+    // owns the local chat process. Starting it again from this Vite config
+    // races for port 4310 and leaves chat/video unavailable.
+    plugins: [react()],
 
     // Relative asset paths so the app works under any subfolder mount point
     base: './',
@@ -158,7 +161,7 @@ export default defineConfig({
     // Dev server (npm run dev) — proxies API calls to your local XAMPP
     server: {
         host: '0.0.0.0',
-        port: 5173,
+        port: 5174,
         https: devHttps,
         allowedHosts: ['.trycloudflare.com'],
         proxy: {

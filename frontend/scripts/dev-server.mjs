@@ -16,9 +16,9 @@ const projectRoot = resolve(__dirname, '../..');
 const chatServerDir = resolve(projectRoot, 'chat-server');
 
 const host = argValue('--host', process.env.VITE_HOST || '0.0.0.0');
-const port = Number(argValue('--port', process.env.VITE_PORT || '5173'));
+const port = Number(argValue('--port', process.env.VITE_PORT || '5174'));
 const strictPort = process.argv.includes('--strictPort') || process.env.VITE_STRICT_PORT === '1';
-const chatPort = Number(process.env.CHAT_PORT || '4310');
+const chatPort = Number(process.env.CHAT_PORT || '4311');
 const autoChatServer = process.env.VITE_AUTO_CHAT_SERVER !== '0';
 let chatProcess = null;
 let shuttingDown = false;
@@ -78,8 +78,11 @@ async function ensureChatServer() {
         }
     });
 
-    if (!(await waitForPort(chatPort))) {
+    const chatPortOpened = await waitForPort(chatPort);
+    if (!chatPortOpened && chatProcess.exitCode !== null) {
         console.warn(`[telemed] chat/video service did not open port ${chatPort}. Chat and video will be unavailable until it is running.`);
+    } else if (!chatPortOpened) {
+        console.log(`[telemed] chat/video service started; health check is still initializing on port ${chatPort}`);
     }
 }
 

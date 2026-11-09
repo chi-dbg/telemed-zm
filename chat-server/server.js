@@ -39,7 +39,7 @@ if (fs.existsSync(localEnvPath)) {
 // -----------------------------------------------------------------------
 // Configuration (must match the PHP api/config.php values)
 // -----------------------------------------------------------------------
-const PORT       = Number(process.env.PORT || process.env.CHAT_PORT || 4310);
+const PORT       = Number(process.env.PORT || process.env.CHAT_PORT || 4311);
 const HOST       = process.env.CHAT_HOST || '0.0.0.0';
 const DB_DRIVER  = process.env.DB_DRIVER || (process.env.APP_ENV === 'production' ? 'pgsql' : 'mysql');
 const JWT_SECRET = process.env.JWT_SECRET || '';
