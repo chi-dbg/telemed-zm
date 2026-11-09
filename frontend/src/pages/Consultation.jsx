@@ -94,7 +94,11 @@ function VideoCall({ consultationId, currentUserId, peerLabel }) {
         const sock = io(CHAT_SERVER_URL, {
             auth: { token },
             withCredentials: true,
-            transports: ['websocket', 'polling'],
+            // Begin with HTTP polling. Render reliably accepts this transport
+            // and Socket.IO upgrades to WebSocket when the proxy permits it.
+            // Starting WebSocket-first leaves video signaling disconnected when
+            // a transient proxy upgrade fails.
+            transports: ['polling', 'websocket'],
             reconnectionAttempts: 5,
         });
         socketRef.current = sock;
@@ -493,7 +497,9 @@ function ChatBox({ consultationId, currentUserId, currentUserRole }) {
         const sock = io(CHAT_SERVER_URL, {
             auth: { token },
             withCredentials: true,
-            transports: ['websocket', 'polling'],
+            // Keep chat and video signalling reachable even if the Render
+            // WebSocket upgrade is temporarily unavailable.
+            transports: ['polling', 'websocket'],
             reconnectionAttempts: 5,
         });
         socketRef.current = sock;
