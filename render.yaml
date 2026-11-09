@@ -24,7 +24,12 @@ services:
       - key: JWT_SECRET
         generateValue: true
       - key: CORS_ALLOWED_ORIGINS
-        value: https://telemed-frontend.onrender.com
+        # Render adds a suffix when a service name already exists. Reference the
+        # actual frontend URL instead of assuming its onrender.com subdomain.
+        fromService:
+          type: static
+          name: telemed-frontend
+          envVarKey: RENDER_EXTERNAL_URL
 
   - type: web
     name: telemed-chat
@@ -74,7 +79,11 @@ services:
           name: telemed-api
           envVarKey: DB_SSLMODE
       - key: CORS_ALLOWED_ORIGINS
-        value: https://telemed-frontend.onrender.com
+        # Socket.IO must accept the browser's real static-site origin.
+        fromService:
+          type: static
+          name: telemed-frontend
+          envVarKey: RENDER_EXTERNAL_URL
 
   - type: web
     name: telemed-frontend
@@ -84,6 +93,14 @@ services:
     staticPublishPath: dist
     envVars:
       - key: VITE_API_BASE_URL
-        value: https://telemed-api.onrender.com
+        # Vite embeds this value during the static-site build.  Referencing the
+        # service avoids a broken URL if Render appends a unique suffix.
+        fromService:
+          type: web
+          name: telemed-api
+          envVarKey: RENDER_EXTERNAL_URL
       - key: VITE_CHAT_SERVER_URL
-        value: https://telemed-chat.onrender.com
+        fromService:
+          type: web
+          name: telemed-chat
+          envVarKey: RENDER_EXTERNAL_URL
