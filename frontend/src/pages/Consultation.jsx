@@ -67,7 +67,6 @@ function VideoCall({ consultationId, currentUserId, peerLabel }) {
     const [status, setStatus] = useState('Video call ready.');
     const [callActive, setCallActive] = useState(false);
     const [connecting, setConnecting] = useState(false);
-    const [roomReady, setRoomReady] = useState(false);
     const [audioEnabled, setAudioEnabled] = useState(true);
     const [videoEnabled, setVideoEnabled] = useState(true);
     const [peerMedia, setPeerMedia] = useState(null);
@@ -90,6 +89,7 @@ function VideoCall({ consultationId, currentUserId, peerLabel }) {
     const candidateQueueRef = useRef([]);
     const callActiveRef = useRef(false);
     const roomJoinedRef = useRef(false);
+    const startRequestedRef = useRef(false);
 
     useEffect(() => {
         const token = localStorage.getItem('telemed_token') || '';
@@ -107,14 +107,16 @@ function VideoCall({ consultationId, currentUserId, peerLabel }) {
 
         sock.on('connect', () => {
             roomJoinedRef.current = false;
-            setRoomReady(false);
-            setStatus('Joining video consultation room...');
+            setStatus('Video signaling connected.');
             sock.emit('join', { consultationId, purpose: 'video' });
         });
         sock.on('joined', () => {
             roomJoinedRef.current = true;
-            setRoomReady(true);
             setStatus('Video call ready.');
+            if (startRequestedRef.current) {
+                startRequestedRef.current = false;
+                startCall();
+            }
         });
         sock.on('video-peer-joined', ({ from }) => {
             if (!callActiveRef.current) {
@@ -143,17 +145,20 @@ function VideoCall({ consultationId, currentUserId, peerLabel }) {
         sock.on('connect_error', err => setStatus('Video signaling error: ' + err.message));
         sock.on('disconnect', () => {
             roomJoinedRef.current = false;
-            setRoomReady(false);
+            startRequestedRef.current = false;
+            setConnecting(false);
         });
         sock.on('error', e => {
             const message = e?.error || 'unknown';
             roomJoinedRef.current = false;
-            setRoomReady(false);
+            startRequestedRef.current = false;
+            setConnecting(false);
             setStatus('Video room error: ' + message);
         });
 
         return () => {
             roomJoinedRef.current = false;
+            startRequestedRef.current = false;
             sock.disconnect();
             if (pcRef.current) pcRef.current.close();
             if (localStreamRef.current) {
@@ -246,12 +251,20 @@ function VideoCall({ consultationId, currentUserId, peerLabel }) {
 
     async function startCall() {
         const sock = socketRef.current;
-        if (!sock?.connected) {
-            setStatus('Video signaling is still connecting.');
+        if (!sock) {
+            setStatus('Video signaling is not available yet. Please try again.');
+            return;
+        }
+        if (!sock.connected) {
+            startRequestedRef.current = true;
+            setConnecting(true);
+            setStatus('Preparing video call...');
             return;
         }
         if (!roomJoinedRef.current) {
-            setStatus('Joining video consultation room...');
+            startRequestedRef.current = true;
+            setConnecting(true);
+            setStatus('Preparing video call...');
             sock.emit('join', { consultationId, purpose: 'video' });
             return;
         }
@@ -452,8 +465,8 @@ function VideoCall({ consultationId, currentUserId, peerLabel }) {
 
             <div className="video-controls">
                 {!callActive ? (
-                    <motion.button onClick={startCall} whileTap={{ scale: 0.97 }} disabled={connecting || !roomReady}>
-                        <VideoIcon size={16} /> {connecting ? 'Starting...' : roomReady ? 'Start video call' : 'Joining room...'}
+                    <motion.button onClick={startCall} whileTap={{ scale: 0.97 }} disabled={connecting}>
+                        <VideoIcon size={16} /> {connecting ? 'Starting...' : 'Start video call'}
                     </motion.button>
                 ) : (
                     <>
